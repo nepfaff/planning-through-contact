@@ -28,6 +28,7 @@ class PositionModeType(Enum):
     BOTTOM_RIGHT = 6
     BOTTOM = 7
     BOTTOM_LEFT = 8
+    FRONT = 9
 
 
 @dataclass(eq=True)

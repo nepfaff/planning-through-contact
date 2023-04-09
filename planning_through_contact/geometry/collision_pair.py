@@ -26,7 +26,7 @@ class CollisionPair:
     body_b: RigidBody
     friction_coeff: float
     position_mode: PositionModeType
-    force_curve_order: int = 2  # TODO remove?
+    force_curve_order: int = 1  # TODO remove?
 
     # TODO Also use position modes to specify position constraints!
 
@@ -41,10 +41,11 @@ class CollisionPair:
 
         self.lam_n = BezierVariable(
             dim=1, order=self.force_curve_order, name=f"{self.name}_lam_n"
-        ).x
+        ).x  # Normal force
+        system_dim = 2
         self.lam_f = BezierVariable(
-            dim=1, order=self.force_curve_order, name=f"{self.name}_lam_f"
-        ).x
+            dim=system_dim, order=self.force_curve_order, name=f"{self.name}_lam_f"
+        ).x  # Friction force
         self.additional_constraints = []
         self.contact_modes_formulated = False
 
@@ -59,7 +60,13 @@ class CollisionPair:
                 position_mode == PositionModeType.LEFT
                 or position_mode == PositionModeType.RIGHT
             ):
-                raise NotImplementedError
+                y_constraint_top = ge(
+                    body_a.pos_y + body_a.height, body_b.pos_y - body_b.height
+                )
+                y_constraint_bottom = le(
+                    body_a.pos_y - body_a.height, body_b.pos_y + body_b.height
+                )
+                return np.array([y_constraint_top, y_constraint_bottom])
             elif (
                 position_mode == PositionModeType.TOP
                 or position_mode == PositionModeType.BOTTOM
@@ -71,6 +78,34 @@ class CollisionPair:
                     body_a.pos_x - body_a.width, body_b.pos_x + body_b.width
                 )
                 return np.array([x_constraint_left, x_constraint_right])
+            elif position_mode == PositionModeType.FRONT:
+                # Above floor
+                z_constraint = ge(
+                    body_a.pos_z - body_a.depth, body_b.pos_z + body_b.depth
+                )
+
+                # Within floor
+                x_constraint_left = ge(
+                    body_a.pos_x + body_a.width, body_b.pos_x - body_b.width
+                )
+                x_constraint_right = le(
+                    body_a.pos_x - body_a.width, body_b.pos_x + body_b.width
+                )
+                y_constraint_top = ge(
+                    body_a.pos_y + body_a.height, body_b.pos_y - body_b.height
+                )
+                y_constraint_bottom = le(
+                    body_a.pos_y - body_a.height, body_b.pos_y + body_b.height
+                )
+                return np.array(
+                    [
+                        z_constraint,
+                        x_constraint_left,
+                        x_constraint_right,
+                        y_constraint_top,
+                        y_constraint_bottom,
+                    ]
+                )
         else:
             box = body_a if body_a.geometry == "box" else body_b
             point = body_a if body_a.geometry == "point" else body_b
@@ -89,66 +124,137 @@ class CollisionPair:
                 x_constraint_left = ge(point.pos_x, box.pos_x - box.width)
                 x_constraint_right = le(point.pos_x, box.pos_x + box.width)
                 return np.array([x_constraint_left, x_constraint_right])
+            elif position_mode == PositionModeType.FRONT:
+                raise NotImplementedError()
             else:
                 raise NotImplementedError(
                     f"Position mode not implemented: {position_mode}"
                 )
 
-    @staticmethod
     def _create_signed_distance_func(
-        body_a, body_b, position_mode: PositionModeType
+        self, body_a, body_b, position_mode: PositionModeType
     ) -> sym.Expression:
-        if body_a.geometry == "point" and body_b.geometry == "point":
-            raise ValueError("Point with point contact not allowed")
-        elif body_a.geometry == "box" and body_b.geometry == "box":
-            x_offset = body_a.width + body_b.width
-            y_offset = body_a.height + body_b.height
+        if self.dim == 2:
+            if body_a.geometry == "point" and body_b.geometry == "point":
+                raise ValueError("Point with point contact not allowed")
+            elif body_a.geometry == "box" and body_b.geometry == "box":
+                x_offset = body_a.width + body_b.width
+                y_offset = body_a.height + body_b.height
+            else:
+                box = body_a if body_a.geometry == "box" else body_b
+                x_offset = box.width
+                y_offset = box.height
+
+            if (
+                position_mode == PositionModeType.LEFT
+            ):  # body_a is on left side of body_b
+                dx = body_b.pos_x - body_a.pos_x - x_offset
+                dy = 0
+            elif position_mode == PositionModeType.RIGHT:
+                dx = body_a.pos_x - body_b.pos_x - x_offset
+                dy = 0
+            elif position_mode == PositionModeType.TOP:  # body_a on top of body_b
+                dx = 0
+                dy = body_a.pos_y - body_b.pos_y - y_offset
+            elif position_mode == PositionModeType.BOTTOM:
+                dx = 0
+                dy = body_b.pos_y - body_a.pos_y - y_offset
+            else:
+                raise NotImplementedError(
+                    f"Position mode not implemented: {position_mode}"
+                )
+
+            return dx + dy  # NOTE convex relaxation
         else:
-            box = body_a if body_a.geometry == "box" else body_b
-            x_offset = box.width
-            y_offset = box.height
+            if body_a.geometry == "point" and body_b.geometry == "point":
+                raise ValueError("Point with point contact not allowed")
+            elif body_a.geometry == "box" and body_b.geometry == "box":
+                x_offset = body_a.width + body_b.width
+                y_offset = body_a.height + body_b.height
+                z_offset = body_a.depth + body_b.depth
+            else:
+                box = body_a if body_a.geometry == "box" else body_b
+                x_offset = box.width
+                y_offset = box.height
+                z_offset = box.depth
 
-        if position_mode == PositionModeType.LEFT:  # body_a is on left side of body_b
-            dx = body_b.pos_x - body_a.pos_x - x_offset
-            dy = 0
-        elif position_mode == PositionModeType.RIGHT:
-            dx = body_a.pos_x - body_b.pos_x - x_offset
-            dy = 0
-        elif position_mode == PositionModeType.TOP:  # body_a on top of body_b
-            dx = 0
-            dy = body_a.pos_y - body_b.pos_y - y_offset
-        elif position_mode == PositionModeType.BOTTOM:
-            dx = 0
-            dy = body_b.pos_y - body_a.pos_y - y_offset
-        else:
-            raise NotImplementedError(f"Position mode not implemented: {position_mode}")
+            if (
+                position_mode == PositionModeType.LEFT
+            ):  # body_a is on left side of body_b
+                dx = body_b.pos_x - body_a.pos_x - x_offset
+                dy = 0
+                dz = 0
+            elif position_mode == PositionModeType.RIGHT:
+                dx = body_a.pos_x - body_b.pos_x - x_offset
+                dy = 0
+                dz = 0
+            elif position_mode == PositionModeType.TOP:  # body_a on top of body_b
+                dx = 0
+                dy = body_a.pos_y - body_b.pos_y - y_offset
+                dz = 0
+            elif position_mode == PositionModeType.BOTTOM:
+                dx = 0
+                dy = body_b.pos_y - body_a.pos_y - y_offset
+                dz = 0
+            elif position_mode == PositionModeType.FRONT:
+                dx = 0
+                dy = 0
+                dz = body_a.pos_z - body_b.pos_z - z_offset
+            else:
+                raise NotImplementedError(
+                    f"Position mode not implemented: {position_mode}"
+                )
 
-        return dx + dy  # NOTE convex relaxation
+            return dx + dy + dz  # NOTE convex relaxation
 
-    @staticmethod
     def _create_normal_vec(
-        body_a, body_b, position_mode: PositionModeType
+        self, body_a, body_b, position_mode: PositionModeType
     ) -> npt.NDArray[np.float64]:
         if body_a.geometry == "point" and body_b.geometry == "point":
             raise ValueError("Point with point contact not allowed")
 
         # Normal vector: from body_a to body_b
-        if position_mode == PositionModeType.LEFT:  # body_a left side of body_b
-            n_hat = np.array([[1, 0]]).T
-        elif position_mode == PositionModeType.RIGHT:
-            n_hat = np.array([[-1, 0]]).T
-        elif position_mode == PositionModeType.TOP:
-            n_hat = np.array([[0, -1]]).T
-        elif position_mode == PositionModeType.BOTTOM:
-            n_hat = np.array([[0, 1]]).T
+        if self.dim == 2:
+            if position_mode == PositionModeType.LEFT:  # body_a left side of body_b
+                n_hat = np.array([[1, 0]]).T
+            elif position_mode == PositionModeType.RIGHT:
+                n_hat = np.array([[-1, 0]]).T
+            elif position_mode == PositionModeType.TOP:
+                n_hat = np.array([[0, -1]]).T
+            elif position_mode == PositionModeType.BOTTOM:
+                n_hat = np.array([[0, 1]]).T
+            else:
+                raise NotImplementedError(
+                    f"2D position mode not implemented: {position_mode}"
+                )
         else:
-            raise NotImplementedError(f"Position mode not implemented: {position_mode}")
+            if position_mode == PositionModeType.LEFT:  # body_a left side of body_b
+                n_hat = np.array([[1, 0, 0]]).T
+            elif position_mode == PositionModeType.RIGHT:
+                n_hat = np.array([[-1, 0, 0]]).T
+            elif position_mode == PositionModeType.TOP:
+                n_hat = np.array([[0, -1, 0]]).T
+            elif position_mode == PositionModeType.BOTTOM:
+                n_hat = np.array([[0, 1, 0]]).T
+            elif position_mode == PositionModeType.FRONT:
+                n_hat = np.array([[0, 0, -1]]).T
+            else:
+                raise NotImplementedError(
+                    f"3D position mode not implemented: {position_mode}"
+                )
 
         return n_hat
 
     def _create_tangential_vec(self, n_hat: npt.NDArray[np.float64]):
-        assert self.dim == 2  # TODO for now only works for 2D
-        d_hat = np.array([[-n_hat[1, 0]], [n_hat[0, 0]]])
+        if self.dim == 2:
+            d_hat = np.array([[-n_hat[1, 0]], [n_hat[0, 0]]])
+        else:
+            if n_hat[0, 0] != 0:
+                d_hat = n_hat[0, 0] * np.array([[0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]).T
+            elif n_hat[1, 0] != 0:
+                d_hat = n_hat[1, 0] * np.array([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0]]).T
+            elif n_hat[2, 0] != 0:
+                d_hat = n_hat[2, 0] * np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]).T
         return d_hat
 
     @property
@@ -161,19 +267,23 @@ class CollisionPair:
 
     @property
     def contact_jacobian(self) -> npt.NDArray[np.float64]:
+        # See http://underactuated.mit.edu/multibody.html#contact
         # v_rel = v_body_b - v_body_a = J (v_body_a, v_body_b)^T
         return np.hstack((-np.eye(self.dim), np.eye(self.dim)))
 
     @property
     def normal_jacobian(self) -> npt.NDArray[np.float64]:
+        # Direction of normal force acting on each body
         return self.n_hat.T.dot(self.contact_jacobian)
 
     @property
     def tangential_jacobian(self) -> npt.NDArray[np.float64]:
+        # Direction of friction force acting on each body
         return self.d_hat.T.dot(self.contact_jacobian)
 
     @property
     def rel_tangential_sliding_vel(self) -> npt.NDArray[sym.Expression]:
+        # Project sliding velocity along friction force direction
         return self.tangential_jacobian.dot(
             np.vstack((self.body_a.vel.x, self.body_b.vel.x))
         )
@@ -187,7 +297,9 @@ class CollisionPair:
         self, bodies: List[RigidBody], local_jacobian: npt.NDArray[np.float64]
     ) -> npt.NDArray[np.float64]:
         # (1, num_bodies * num_dims)
-        jacobian_for_all_bodies = np.zeros((1, len(bodies) * self.dim))
+        jacobian_for_all_bodies = np.zeros(
+            (len(local_jacobian), len(bodies) * self.dim)
+        )
 
         body_a_idx_in_J = bodies.index(self.body_a) * self.dim
         body_b_idx_in_J = bodies.index(self.body_b) * self.dim
@@ -353,6 +465,7 @@ class CollisionPairHandler:
         external_forces: npt.NDArray[sym.Expression],
         unactuated_dofs: npt.NDArray[np.int64],
     ) -> List[sym.Formula]:
+        # Enforce force balance at Bezier control points
         normal_jacobians = np.vstack(
             [p.get_normal_jacobian_for_bodies(bodies) for p in collision_pairs]
         )
@@ -363,9 +476,14 @@ class CollisionPairHandler:
         normal_forces = np.concatenate([p.lam_n for p in collision_pairs])
         friction_forces = np.concatenate([p.lam_f for p in collision_pairs])
 
+        # Projection of force is scalar as project onto single dimension
         all_force_balances = eq(
-            normal_jacobians.T.dot(normal_forces)
-            + tangential_jacobians.T.dot(friction_forces)
+            normal_jacobians.T.dot(
+                normal_forces
+            )  # Projection of normal force along normal force direction
+            + tangential_jacobians.T.dot(
+                friction_forces
+            )  # Projection of friction force along friction force direction
             + external_forces,
             0,
         )

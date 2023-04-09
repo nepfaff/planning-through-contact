@@ -14,7 +14,8 @@ class RigidBody:
     geometry: Literal["point", "box"]
     width: float = 0  # TODO generalize
     height: float = 0
-    position_curve_order: int = 2
+    depth: float = 0
+    position_curve_order: int = 1
     actuated: bool = False
 
     def __post_init__(self) -> None:
@@ -33,3 +34,7 @@ class RigidBody:
     @property
     def pos_y(self) -> npt.NDArray[sym.Expression]:
         return self.pos.x[1, :]
+
+    @property
+    def pos_z(self) -> npt.NDArray[sym.Expression]:
+        return self.pos.x[2, :]

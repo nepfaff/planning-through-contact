@@ -39,7 +39,7 @@ from planning_through_contact.visualize.visualize import (
 def plan_for_box_pushing():
     # Bezier curve params
     problem_dim = 2
-    bezier_curve_order = 2
+    bezier_curve_order = 1
 
     mass = 1  # kg
     g = 9.81  # m/s^2
