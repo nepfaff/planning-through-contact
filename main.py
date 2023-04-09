@@ -1,6 +1,6 @@
 import argparse
 
-from experiments.one_d_pusher import plan_for_box_pickup, plan_for_box_pushing
+from planning_through_contact.experiments.one_d_pusher import plan_for_box_pickup, plan_for_box_pushing
 
 
 def main():
