@@ -123,6 +123,22 @@ class CollisionPair:
                 x_constraint_left = ge(point.pos_x, box.pos_x - box.width)
                 x_constraint_right = le(point.pos_x, box.pos_x + box.width)
                 return np.array([x_constraint_left, x_constraint_right])
+            elif position_mode == PositionModeType.TOP_LEFT:
+                x_constraint = le(point.pos_x, box.pos_x - box.width)
+                y_constraint = ge(point.pos_y, box.pos_y + box.height)
+                return np.array([x_constraint, y_constraint])
+            elif position_mode == PositionModeType.TOP_RIGHT:
+                x_constraint = ge(point.pos_x, box.pos_x + box.width)
+                y_constraint = ge(point.pos_y, box.pos_y + box.height)
+                return np.array([x_constraint, y_constraint])
+            elif position_mode == PositionModeType.BOTTOM_LEFT:
+                x_constraint = le(point.pos_x, box.pos_x - box.width)
+                y_constraint = le(point.pos_y, box.pos_y - box.height)
+                return np.array([x_constraint, y_constraint])
+            elif position_mode == PositionModeType.BOTTOM_RIGHT:
+                x_constraint = ge(point.pos_x, box.pos_x + box.width)
+                y_constraint = le(point.pos_y, box.pos_y - box.height)
+                return np.array([x_constraint, y_constraint])
             elif position_mode == PositionModeType.FRONT:
                 raise NotImplementedError()
             else:
@@ -199,6 +215,22 @@ class CollisionPair:
                 dx = 0
                 dy = 0
                 dz = body_a.pos_z - body_b.pos_z - z_offset
+            elif position_mode == PositionModeType.TOP_LEFT:
+                dx = body_b.pos_x - body_a.pos_x - x_offset
+                dy = body_a.pos_y - body_b.pos_y - y_offset
+                dz = 0
+            elif position_mode == PositionModeType.TOP_RIGHT:
+                dx = body_a.pos_x - body_b.pos_x - x_offset
+                dy = body_a.pos_y - body_b.pos_y - y_offset
+                dz = 0
+            elif position_mode == PositionModeType.BOTTOM_LEFT:
+                dx = body_b.pos_x - body_a.pos_x - x_offset
+                dy = body_b.pos_y - body_a.pos_y - y_offset
+                dz = 0
+            elif position_mode == PositionModeType.BOTTOM_RIGHT:
+                dx = body_a.pos_x - body_b.pos_x - x_offset
+                dy = body_b.pos_y - body_a.pos_y - y_offset
+                dz = 0
             else:
                 raise NotImplementedError(
                     f"Position mode not implemented: {position_mode}"
@@ -237,6 +269,18 @@ class CollisionPair:
                 n_hat = np.array([[0, 1, 0]]).T
             elif position_mode == PositionModeType.FRONT:
                 n_hat = np.array([[0, 0, -1]]).T
+            elif position_mode == PositionModeType.TOP_LEFT:
+                # NOTE: This is incorrect (should not be used)
+                n_hat = np.array([[0, 0, 0]]).T
+            elif position_mode == PositionModeType.TOP_RIGHT:
+                # NOTE: This is incorrect (should not be used)
+                n_hat = np.array([[0, 0, 0]]).T
+            elif position_mode == PositionModeType.BOTTOM_LEFT:
+                # NOTE: This is incorrect (should not be used)
+                n_hat = np.array([[0, 0, 0]]).T
+            elif position_mode == PositionModeType.BOTTOM_RIGHT:
+                # NOTE: This is incorrect (should not be used)
+                n_hat = np.array([[0, 0, 0]]).T
             else:
                 raise NotImplementedError(
                     f"3D position mode not implemented: {position_mode}"
@@ -254,6 +298,9 @@ class CollisionPair:
                 d_hat = n_hat[1, 0] * np.array([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0]]).T
             elif n_hat[2, 0] != 0:
                 d_hat = n_hat[2, 0] * np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]).T
+            else:
+                # NOTE: This is incorrect and should not be used
+                d_hat = np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]).T
         return d_hat
 
     @property
@@ -365,7 +412,16 @@ class CollisionPair:
                 *self.force_balance,
                 *self.additional_constraints,
             ],
-            ContactModeType.ROLLING: [
+        }
+
+        no_contact_position_modes = [
+            PositionModeType.TOP_LEFT,
+            PositionModeType.TOP_RIGHT,
+            PositionModeType.BOTTOM_LEFT,
+            PositionModeType.BOTTOM_RIGHT,
+        ]
+        if self.position_mode not in no_contact_position_modes:
+            modes_constraints[ContactModeType.ROLLING] = [
                 eq(self.sdf, 0),
                 ge(self.lam_n, 0),
                 eq(self.rel_tangential_sliding_vel, 0),
@@ -374,61 +430,57 @@ class CollisionPair:
                 *position_mode_constraints,
                 *self.force_balance,
                 *self.additional_constraints,
-            ],
-        }
-
-        if allow_sliding:
-            # import IPython
-
-            # IPython.embed()
-            # Outside horizontal friction cone (max negative friction force as sliding
-            # right) and inside vertical friction cone
-            modes_constraints[ContactModeType.SLIDING_RIGHT] = [
-                eq(self.sdf, 0),
-                ge(self.lam_n, 0),
-                ge(self.rel_tangential_sliding_vel, 0),
-                eq(self.lam_f[0], -self.friction_coeff * self.lam_n),
-                le(self.lam_f[1], self.friction_coeff * self.lam_n),
-                ge(self.lam_f[1], -self.friction_coeff * self.lam_n),
-                *position_mode_constraints,
-                *self.force_balance,
-                *self.additional_constraints,
-            ]
-            modes_constraints[ContactModeType.SLIDING_LEFT] = [
-                eq(self.sdf, 0),
-                ge(self.lam_n, 0),
-                le(self.rel_tangential_sliding_vel, 0),
-                eq(self.lam_f[0], self.friction_coeff * self.lam_n),
-                le(self.lam_f[1], self.friction_coeff * self.lam_n),
-                ge(self.lam_f[1], -self.friction_coeff * self.lam_n),
-                *position_mode_constraints,
-                *self.force_balance,
-                *self.additional_constraints,
             ]
 
-            # Inside horizontal friction cone, outside vertical friction cone
-            modes_constraints[ContactModeType.SLIDING_UP] = [
-                eq(self.sdf, 0),
-                ge(self.lam_n, 0),
-                ge(self.rel_tangential_sliding_vel, 0),
-                eq(self.lam_f[1], -self.friction_coeff * self.lam_n),
-                le(self.lam_f[0], self.friction_coeff * self.lam_n),
-                ge(self.lam_f[0], -self.friction_coeff * self.lam_n),
-                *position_mode_constraints,
-                *self.force_balance,
-                *self.additional_constraints,
-            ]
-            modes_constraints[ContactModeType.SLIDING_DOWN] = [
-                eq(self.sdf, 0),
-                ge(self.lam_n, 0),
-                le(self.rel_tangential_sliding_vel, 0),
-                eq(self.lam_f[1], self.friction_coeff * self.lam_n),
-                le(self.lam_f[0], self.friction_coeff * self.lam_n),
-                ge(self.lam_f[0], -self.friction_coeff * self.lam_n),
-                *position_mode_constraints,
-                *self.force_balance,
-                *self.additional_constraints,
-            ]
+            if allow_sliding:
+                # Outside horizontal friction cone (max negative friction force as sliding
+                # right) and inside vertical friction cone
+                modes_constraints[ContactModeType.SLIDING_RIGHT] = [
+                    eq(self.sdf, 0),
+                    ge(self.lam_n, 0),
+                    ge(self.rel_tangential_sliding_vel, 0),
+                    eq(self.lam_f[0], -self.friction_coeff * self.lam_n),
+                    le(self.lam_f[1], self.friction_coeff * self.lam_n),
+                    ge(self.lam_f[1], -self.friction_coeff * self.lam_n),
+                    *position_mode_constraints,
+                    *self.force_balance,
+                    *self.additional_constraints,
+                ]
+                modes_constraints[ContactModeType.SLIDING_LEFT] = [
+                    eq(self.sdf, 0),
+                    ge(self.lam_n, 0),
+                    le(self.rel_tangential_sliding_vel, 0),
+                    eq(self.lam_f[0], self.friction_coeff * self.lam_n),
+                    le(self.lam_f[1], self.friction_coeff * self.lam_n),
+                    ge(self.lam_f[1], -self.friction_coeff * self.lam_n),
+                    *position_mode_constraints,
+                    *self.force_balance,
+                    *self.additional_constraints,
+                ]
+
+                # Inside horizontal friction cone, outside vertical friction cone
+                modes_constraints[ContactModeType.SLIDING_UP] = [
+                    eq(self.sdf, 0),
+                    ge(self.lam_n, 0),
+                    ge(self.rel_tangential_sliding_vel, 0),
+                    eq(self.lam_f[1], -self.friction_coeff * self.lam_n),
+                    le(self.lam_f[0], self.friction_coeff * self.lam_n),
+                    ge(self.lam_f[0], -self.friction_coeff * self.lam_n),
+                    *position_mode_constraints,
+                    *self.force_balance,
+                    *self.additional_constraints,
+                ]
+                modes_constraints[ContactModeType.SLIDING_DOWN] = [
+                    eq(self.sdf, 0),
+                    ge(self.lam_n, 0),
+                    le(self.rel_tangential_sliding_vel, 0),
+                    eq(self.lam_f[1], self.friction_coeff * self.lam_n),
+                    le(self.lam_f[0], self.friction_coeff * self.lam_n),
+                    ge(self.lam_f[0], -self.friction_coeff * self.lam_n),
+                    *position_mode_constraints,
+                    *self.force_balance,
+                    *self.additional_constraints,
+                ]
 
         self.contact_modes = {
             mode_type: ContactMode(
