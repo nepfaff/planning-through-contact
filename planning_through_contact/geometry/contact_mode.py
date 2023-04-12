@@ -14,8 +14,10 @@ from planning_through_contact.geometry.polyhedron import PolyhedronFormulator
 class ContactModeType(Enum):
     NO_CONTACT = 1
     ROLLING = 2
-    SLIDING_POSITIVE = 3
-    SLIDING_NEGATIVE = 3
+    SLIDING_RIGHT = 3
+    SLIDING_LEFT = 4
+    SLIDING_UP = 5
+    SLIDING_DOWN = 6
 
 
 # Position of body A relative to body B
@@ -94,8 +96,10 @@ class ContactMode:
         default_factory=lambda: {
             ContactModeType.NO_CONTACT: "NC",
             ContactModeType.ROLLING: "RL",
-            ContactModeType.SLIDING_POSITIVE: "SP",
-            ContactModeType.SLIDING_NEGATIVE: "SN",
+            ContactModeType.SLIDING_RIGHT: "SR",
+            ContactModeType.SLIDING_LEFT: "SL",
+            ContactModeType.SLIDING_UP: "SU",
+            ContactModeType.SLIDING_DOWN: "SD",
         }
     )
 

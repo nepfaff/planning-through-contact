@@ -115,10 +115,15 @@ def plan_for_box_pushing():
     )
     target_config = ContactModeConfig(
         modes={
-            p1.name: ContactModeType.NO_CONTACT,
-            p2.name: ContactModeType.ROLLING,
+            p1.name: ContactModeType.NO_CONTACT,  # Finger not in contact with box
+            p2.name: ContactModeType.ROLLING,  # Box in contact with floor
         },
-        additional_constraints=[eq(x_b, 10.0), eq(y_b, box_height), eq(x_f, 0.0)],
+        additional_constraints=[
+            eq(x_f, 0),
+            eq(y_f, 0.6),
+            eq(x_b, 6.0),
+            eq(y_b, box_height),
+        ],
     )
 
     # TODO this is very hardcoded

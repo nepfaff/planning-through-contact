@@ -42,9 +42,8 @@ class CollisionPair:
         self.lam_n = BezierVariable(
             dim=1, order=self.force_curve_order, name=f"{self.name}_lam_n"
         ).x  # Normal force
-        system_dim = 2
         self.lam_f = BezierVariable(
-            dim=system_dim, order=self.force_curve_order, name=f"{self.name}_lam_f"
+            dim=2, order=self.force_curve_order, name=f"{self.name}_lam_f"
         ).x  # Friction force
         self.additional_constraints = []
         self.contact_modes_formulated = False
@@ -379,20 +378,53 @@ class CollisionPair:
         }
 
         if allow_sliding:
-            modes_constraints[ContactModeType.SLIDING_POSITIVE] = [
+            # import IPython
+
+            # IPython.embed()
+            # Outside horizontal friction cone (max negative friction force as sliding
+            # right) and inside vertical friction cone
+            modes_constraints[ContactModeType.SLIDING_RIGHT] = [
                 eq(self.sdf, 0),
                 ge(self.lam_n, 0),
                 ge(self.rel_tangential_sliding_vel, 0),
-                eq(self.lam_f, -self.friction_coeff * self.lam_n),
+                eq(self.lam_f[0], -self.friction_coeff * self.lam_n),
+                le(self.lam_f[1], self.friction_coeff * self.lam_n),
+                ge(self.lam_f[1], -self.friction_coeff * self.lam_n),
                 *position_mode_constraints,
                 *self.force_balance,
                 *self.additional_constraints,
             ]
-            modes_constraints[ContactModeType.SLIDING_NEGATIVE] = [
+            modes_constraints[ContactModeType.SLIDING_LEFT] = [
                 eq(self.sdf, 0),
                 ge(self.lam_n, 0),
                 le(self.rel_tangential_sliding_vel, 0),
-                eq(self.lam_f, self.friction_coeff * self.lam_n),
+                eq(self.lam_f[0], self.friction_coeff * self.lam_n),
+                le(self.lam_f[1], self.friction_coeff * self.lam_n),
+                ge(self.lam_f[1], -self.friction_coeff * self.lam_n),
+                *position_mode_constraints,
+                *self.force_balance,
+                *self.additional_constraints,
+            ]
+
+            # Inside horizontal friction cone, outside vertical friction cone
+            modes_constraints[ContactModeType.SLIDING_UP] = [
+                eq(self.sdf, 0),
+                ge(self.lam_n, 0),
+                ge(self.rel_tangential_sliding_vel, 0),
+                eq(self.lam_f[1], -self.friction_coeff * self.lam_n),
+                le(self.lam_f[0], self.friction_coeff * self.lam_n),
+                ge(self.lam_f[0], -self.friction_coeff * self.lam_n),
+                *position_mode_constraints,
+                *self.force_balance,
+                *self.additional_constraints,
+            ]
+            modes_constraints[ContactModeType.SLIDING_DOWN] = [
+                eq(self.sdf, 0),
+                ge(self.lam_n, 0),
+                le(self.rel_tangential_sliding_vel, 0),
+                eq(self.lam_f[1], self.friction_coeff * self.lam_n),
+                le(self.lam_f[0], self.friction_coeff * self.lam_n),
+                ge(self.lam_f[0], -self.friction_coeff * self.lam_n),
                 *position_mode_constraints,
                 *self.force_balance,
                 *self.additional_constraints,
