@@ -275,12 +275,12 @@ class GcsContactPlanner:
         #            e_cost = Binding[Cost](energy_cost, e.xu())
         #            e.AddCost(e_cost)
 
-    def solve(self, use_convex_relaxation: bool = False) -> MathematicalProgramResult:
+    def solve(self, use_convex_relaxation: bool = True) -> MathematicalProgramResult:
         options = opt.GraphOfConvexSetsOptions()
         options.convex_relaxation = use_convex_relaxation
         if use_convex_relaxation is True:
             options.preprocessing = True  # TODO Do I need to deal with this?
-            options.max_rounded_paths = 10
+            options.max_rounded_paths = 10  # Increase if get infeasible solution
 
         print("Solving GCS problem...")
         result = self.gcs.SolveShortestPath(self.source, self.target, options)
