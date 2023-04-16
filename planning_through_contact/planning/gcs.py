@@ -1,4 +1,6 @@
 from typing import Dict, List, Optional, Tuple
+from functools import reduce
+import time
 
 import numpy as np
 import numpy.typing as npt
@@ -17,9 +19,10 @@ from pydrake.solvers import (
 from tqdm import tqdm
 
 from planning_through_contact.geometry.bezier import BezierCurve
-from planning_through_contact.geometry.collision_pair import (
-    CollisionPair,
-    CollisionPairHandler,
+from planning_through_contact.geometry.object_pair import ObjectPair
+from planning_through_contact.geometry.contact_pair import (
+    ContactPair,
+    ObjectPairHandler,
 )
 from planning_through_contact.geometry.rigid_body import RigidBody
 from planning_through_contact.planning.graph_builder import (
@@ -33,45 +36,48 @@ class GcsContactPlanner:
     def __init__(
         self,
         rigid_bodies: List[RigidBody],
-        collision_pairs: List[CollisionPair],  # TODO Will be removed
+        object_pairs: List[ObjectPair],  # TODO Will be removed
         external_forces: List[sym.Expression],
         additional_constraints: Optional[List[sym.Formula]],
         allow_sliding: bool = False,
     ):
         self.rigid_bodies = rigid_bodies
-        self.collision_pairs = collision_pairs
+        self.object_pairs = object_pairs
+        
+        contact_pairs_nested = [object_pair.contact_pairs for object_pair in self.object_pairs]
+        self.contact_pairs = reduce(lambda a, b: a + b, contact_pairs_nested)
 
         self.all_decision_vars = self._collect_all_decision_vars(
-            self.rigid_bodies, self.collision_pairs
+            self.rigid_bodies, self.contact_pairs
         )
         self.all_position_vars = self.all_decision_vars[
             : self.num_bodies * (self.position_curve_order + 1) * self.position_dim
         ]
         self.all_force_vars = self.all_decision_vars[len(self.all_position_vars) :]
 
-        self.collision_pair_handler = CollisionPairHandler(
+        self.object_pair_handler = ObjectPairHandler(
             self.all_decision_vars,
             rigid_bodies,
-            collision_pairs,
+            object_pairs,
             external_forces,
             additional_constraints,
             allow_sliding,
         )
 
-        self.graph_builder = GraphBuilder(self.collision_pair_handler)
+        self.graph_builder = GraphBuilder(self.object_pair_handler)
         self.gcs = GraphOfConvexSets()
 
     def _collect_all_decision_vars(
         self,
         bodies: List[RigidBody],
-        collision_pairs: List[CollisionPair],
+        contact_pairs: List[ContactPair],
     ) -> npt.NDArray[sym.Variable]:
         all_pos_vars = np.concatenate([b.pos.x.flatten() for b in bodies])
         all_normal_force_vars = np.concatenate(
-            [p.lam_n.flatten() for p in collision_pairs]
+            [p.lam_n.flatten() for p in contact_pairs]
         )
         all_friction_force_vars = np.concatenate(
-            [p.lam_f.flatten() for p in collision_pairs]
+            [p.lam_f.flatten() for p in contact_pairs]
         )
         all_vars = np.concatenate(
             [all_pos_vars, all_normal_force_vars, all_friction_force_vars]
@@ -84,19 +90,20 @@ class GcsContactPlanner:
 
     @property
     def num_pairs(self) -> int:
-        return len(self.collision_pairs)
+        """Number of contact pairs."""
+        return len(self.contact_pairs)
 
     @property
     def position_dim(self) -> int:
-        return self.collision_pairs[0].body_a.dim
+        return self.contact_pairs[0].body_a.dim
 
     @property
     def position_curve_order(self) -> int:
-        return self.collision_pairs[0].body_a.position_curve_order
+        return self.contact_pairs[0].body_a.position_curve_order
 
     @property
     def force_curve_order(self) -> int:
-        return self.collision_pairs[0].force_curve_order
+        return self.contact_pairs[0].force_curve_order
 
     @staticmethod
     def _find_source(
@@ -164,6 +171,7 @@ class GcsContactPlanner:
             return [u] + self._find_path_to_target(edges, target, v)
 
     def allow_revisits_to_vertices(self, num_allowed_revisits: int) -> None:
+        start_time = time.time()
         if num_allowed_revisits > 0:
             # TODO: This should be sped up, as it will scale poorly
             # Runtime: O(v * E), E ~= v^2, O(V^3)
@@ -182,6 +190,7 @@ class GcsContactPlanner:
 
             for u, v in new_edges:
                 self.gcs.AddEdge(u, v)
+        print(f"allow_revisits_to_vertices took {time.time()-start_time} seconds")
 
     def _get_idxs_for_pos_ctrl_point_j(self, j: int) -> npt.NDArray[np.int32]:
         first_idxs = np.arange(0, self.position_dim * self.num_bodies) * (
@@ -326,7 +335,7 @@ class GcsContactPlanner:
         )
         normal_forces = {}
         friction_forces = {}
-        for idx, p in enumerate(self.collision_pairs):
+        for idx, p in enumerate(self.contact_pairs):
             n_force = normal_forces_ctrl_points[
                 :, idx * num_force_vars_per_pair : (idx + 1) * num_force_vars_per_pair
             ]
@@ -341,12 +350,15 @@ class GcsContactPlanner:
     def save_graph_diagram(
         self, filename: str, result: Optional[MathematicalProgramResult] = None
     ) -> None:
+        start_time = time.time()
         if result is not None:
             graphviz = self.gcs.GetGraphvizString(result, False, precision=1)
         else:
             graphviz = self.gcs.GetGraphvizString()
         data = pydot.graph_from_dot_data(graphviz)[0]
         data.write_svg(filename)
+        print(f"Saved graph diagram: {filename}")
+        print(f"save_graph_diagram took {time.time()-start_time} seconds")
 
     def get_curves_from_ctrl_points(
         self, vertex_values: npt.NDArray[np.float64]

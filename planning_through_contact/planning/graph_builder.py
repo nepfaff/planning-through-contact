@@ -7,7 +7,7 @@ from typing import Optional, Tuple
 from pydrake.geometry.optimization import ConvexSet
 from tqdm import tqdm
 
-from planning_through_contact.geometry.collision_pair import CollisionPairHandler
+from planning_through_contact.geometry.contact_pair import ObjectPairHandler
 from planning_through_contact.geometry.contact_mode import (
     ContactModeConfig,
     PrioritizedContactModeConfig,
@@ -24,7 +24,7 @@ class GraphVertex:
     def create_from_mode_config(
         cls,
         config: ContactModeConfig,
-        collision_pair_handler: CollisionPairHandler,
+        collision_pair_handler: ObjectPairHandler,
         name: Optional[str] = None,
         assert_nonempty: bool = True,
     ) -> Optional["GraphVertex"]:
@@ -80,7 +80,7 @@ class Graph:
 
 
 class GraphBuilder:
-    def __init__(self, collision_pair_handler: CollisionPairHandler) -> None:
+    def __init__(self, collision_pair_handler: ObjectPairHandler) -> None:
         self.collision_pair_handler = collision_pair_handler
 
     def add_source_config(self, mc: ContactModeConfig) -> None:
@@ -110,7 +110,7 @@ class GraphBuilder:
 
     def prioritized_search_from_source(
         self,
-        collision_pair_handler: CollisionPairHandler,
+        collision_pair_handler: ObjectPairHandler,
         source_config: ContactModeConfig,
         target_config: ContactModeConfig,
     ):
@@ -170,7 +170,7 @@ class GraphBuilder:
 
     def all_possible_contact_modes(
         self,
-        collision_pair_handler: CollisionPairHandler,
+        collision_pair_handler: ObjectPairHandler,
         source_config: ContactModeConfig,
         target_config: ContactModeConfig,
     ) -> Graph:

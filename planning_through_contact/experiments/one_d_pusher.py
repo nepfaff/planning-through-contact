@@ -4,7 +4,7 @@ import numpy as np
 from pydrake.math import eq
 
 from planning_through_contact.geometry.bezier import BezierCurve
-from planning_through_contact.geometry.collision_pair import CollisionPair
+from planning_through_contact.geometry.contact_pair import ContactPair
 from planning_through_contact.geometry.contact_mode import (
     ContactModeType,
     PositionModeType,
@@ -82,13 +82,13 @@ def plan_for_box_pushing():
     x_g = ground.pos_x
     y_g = ground.pos_y
 
-    p1 = CollisionPair(
+    p1 = ContactPair(
         finger,
         box,
         friction_coeff,
         position_mode=PositionModeType.LEFT,  # Finger on left side of box
     )
-    p2 = CollisionPair(
+    p2 = ContactPair(
         box,
         ground,
         friction_coeff,
@@ -223,31 +223,31 @@ def plan_for_box_pickup():
     y_g = ground.pos_y
 
     # TODO these collision pairs will soon be generated automatically
-    p1 = CollisionPair(
+    p1 = ContactPair(
         finger_1,
         box,
         friction_coeff,
         position_mode=PositionModeType.LEFT,
     )
-    p2 = CollisionPair(
+    p2 = ContactPair(
         finger_2,
         box,
         friction_coeff,
         position_mode=PositionModeType.RIGHT,
     )
-    p3 = CollisionPair(
+    p3 = ContactPair(
         box,
         ground,
         friction_coeff,
         position_mode=PositionModeType.TOP,
     )
-    p4 = CollisionPair(
+    p4 = ContactPair(
         finger_1,
         ground,
         friction_coeff,
         position_mode=PositionModeType.TOP,
     )
-    p5 = CollisionPair(
+    p5 = ContactPair(
         finger_2,
         ground,
         friction_coeff,

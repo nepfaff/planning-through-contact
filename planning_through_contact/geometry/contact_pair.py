@@ -1,6 +1,7 @@
 import itertools
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
+from functools import reduce
 
 import numpy as np
 import numpy.typing as npt
@@ -21,14 +22,12 @@ from planning_through_contact.geometry.rigid_body import RigidBody
 
 
 @dataclass
-class CollisionPair:
+class ContactPair:
     body_a: RigidBody
     body_b: RigidBody
     friction_coeff: float
     position_mode: PositionModeType
     force_curve_order: int = 1  # TODO remove?
-
-    # TODO Also use position modes to specify position constraints!
 
     def __post_init__(self):
         self.sdf = self._create_signed_distance_func(
@@ -305,7 +304,7 @@ class CollisionPair:
 
     @property
     def name(self) -> str:
-        return f"({self.body_a.name},{self.body_b.name})"
+        return f"({self.body_a.name},{self.body_b.name},{self.position_mode.name})"
 
     @property
     def dim(self) -> int:
@@ -495,34 +494,40 @@ class CollisionPair:
         self.contact_modes_formulated = True
 
 
-class CollisionPairHandler:
+class ObjectPairHandler:
     def __init__(
         self,
         all_decision_vars: List[sym.Variable],  # TODO this should not be here
         rigid_bodies: List[RigidBody],
-        collision_pairs: List[CollisionPair],  # TODO Will be removed
+        object_pairs: List["ObjectPair"],  # TODO Will be removed
         external_forces: List[sym.Expression],
         additional_constraints: Optional[List[sym.Formula]],
         allow_sliding: bool = False,
     ) -> None:
         self.all_decision_vars = all_decision_vars
         self.rigid_bodies = rigid_bodies
-        self.collision_pairs = collision_pairs
+        self.object_pairs = object_pairs
         unactuated_dofs = self._get_unactuated_dofs(
             self.rigid_bodies, self.position_dim
         )
+
+        contact_pairs_nested = [
+            object_pair.contact_pairs for object_pair in self.object_pairs
+        ]
+        self.contact_pairs = reduce(lambda a, b: a + b, contact_pairs_nested)
+
         force_balance_constraints = self.construct_force_balance(
-            collision_pairs,
+            self.contact_pairs,
             self.rigid_bodies,
             external_forces,
             unactuated_dofs,
         )
-        for p in self.collision_pairs:
+        for p in self.contact_pairs:
             p.add_force_balance(force_balance_constraints)
-        for p in self.collision_pairs:
+        for p in self.contact_pairs:
             p.add_constraint_to_all_modes(additional_constraints)
 
-        for p in self.collision_pairs:
+        for p in self.contact_pairs:
             p.formulate_contact_modes(self.all_decision_vars, allow_sliding)
 
     @property
@@ -530,8 +535,12 @@ class CollisionPairHandler:
         return self.rigid_bodies[0].dim
 
     @property
-    def collision_pairs_by_name(self) -> Dict[str, CollisionPair]:
-        return {p.name: p for p in self.collision_pairs}
+    def collision_pairs_by_name(self) -> Dict[str, ContactPair]:
+        return {
+            contact_pair.name: contact_pair
+            for object_pair in self.object_pairs
+            for contact_pair in object_pair.contact_pairs
+        }
 
     def _get_unactuated_dofs(
         self, rigid_bodies: List[RigidBody], dim: int
@@ -544,21 +553,21 @@ class CollisionPairHandler:
 
     @staticmethod
     def construct_force_balance(
-        collision_pairs: List[CollisionPair],
+        contact_pairs: List[ContactPair],
         bodies: List[RigidBody],
         external_forces: npt.NDArray[sym.Expression],
         unactuated_dofs: npt.NDArray[np.int64],
     ) -> List[sym.Formula]:
         # Enforce force balance at Bezier control points
         normal_jacobians = np.vstack(
-            [p.get_normal_jacobian_for_bodies(bodies) for p in collision_pairs]
+            [p.get_normal_jacobian_for_bodies(bodies) for p in contact_pairs]
         )
         tangential_jacobians = np.vstack(
-            [p.get_tangential_jacobian_for_bodies(bodies) for p in collision_pairs]
+            [p.get_tangential_jacobian_for_bodies(bodies) for p in contact_pairs]
         )
 
-        normal_forces = np.concatenate([p.lam_n for p in collision_pairs])
-        friction_forces = np.concatenate([p.lam_f for p in collision_pairs])
+        normal_forces = np.concatenate([p.lam_n for p in contact_pairs])
+        friction_forces = np.concatenate([p.lam_f for p in contact_pairs])
 
         # Projection of force is scalar as project onto single dimension
         all_force_balances = eq(
@@ -577,8 +586,12 @@ class CollisionPairHandler:
     def all_possible_contact_cfg_perms(self) -> List[ContactModeConfig]:
         # [(n_m), (n_m), ... (n_m)] n_p times --> n_m * n_p
         all_allowed_contact_modes = [
-            [(pair.name, mode) for mode in pair.allowed_contact_modes]
-            for pair in self.collision_pairs
+            [
+                (contact_pair.name, mode)
+                for contact_pair in object_pair.contact_pairs
+                for mode in contact_pair.allowed_contact_modes
+            ]
+            for object_pair in self.object_pairs
         ]
         # Cartesian product:
         # S = P_1 X P_2 X ... X P_n_p
@@ -600,10 +613,12 @@ class CollisionPairHandler:
             self.collision_pairs_by_name[pair].get_contact_mode(mode)
             for pair, mode in config.modes.items()
         ]
+        print(contact_modes)
         intersects, (
             calculated_name,
             intersection,
         ) = calc_intersection_of_contact_modes(contact_modes)
+
         if not intersects:
             return None
 
@@ -618,4 +633,5 @@ class CollisionPairHandler:
             intersection = intersection.Intersection(additional_set)
 
         name = f"{name}: {calculated_name}" if name is not None else calculated_name
+
         return intersection, name
