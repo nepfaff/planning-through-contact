@@ -43,8 +43,10 @@ class GcsContactPlanner:
     ):
         self.rigid_bodies = rigid_bodies
         self.object_pairs = object_pairs
-        
-        contact_pairs_nested = [object_pair.contact_pairs for object_pair in self.object_pairs]
+
+        contact_pairs_nested = [
+            object_pair.contact_pairs for object_pair in self.object_pairs
+        ]
         self.contact_pairs = reduce(lambda a, b: a + b, contact_pairs_nested)
 
         self.all_decision_vars = self._collect_all_decision_vars(
@@ -287,13 +289,13 @@ class GcsContactPlanner:
     def solve(self, use_convex_relaxation: bool = True) -> MathematicalProgramResult:
         options = opt.GraphOfConvexSetsOptions()
         options.convex_relaxation = use_convex_relaxation
-        if use_convex_relaxation is True:
-            options.preprocessing = True  # TODO Do I need to deal with this?
+        if use_convex_relaxation:
+            options.preprocessing = True
             options.max_rounded_paths = 10  # Increase if get infeasible solution
 
         print("Solving GCS problem...")
         result = self.gcs.SolveShortestPath(self.source, self.target, options)
-        assert result.is_success()
+        assert result.is_success(), "Failed to solve GCS problem!"
         print("Result is success!")
         return result
 
