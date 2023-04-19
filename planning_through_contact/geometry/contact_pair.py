@@ -467,7 +467,8 @@ class ContactPair:
                             for mode, p in self.position_type_force_variable_pairs.items()
                             if mode != self.position_mode
                         ],
-                        ge(self.rel_tangential_sliding_vel, 0),
+                        ge(self.rel_tangential_sliding_vel[0], 0),
+                        eq(self.rel_tangential_sliding_vel[1], 0),
                         eq(self.lam_f[0], -self.friction_coeff * self.lam_n),
                         le(self.lam_f[1], self.friction_coeff * self.lam_n),
                         ge(self.lam_f[1], -self.friction_coeff * self.lam_n),
@@ -489,7 +490,8 @@ class ContactPair:
                             for mode, p in self.position_type_force_variable_pairs.items()
                             if mode != self.position_mode
                         ],
-                        le(self.rel_tangential_sliding_vel, 0),
+                        le(self.rel_tangential_sliding_vel[0], 0),
+                        eq(self.rel_tangential_sliding_vel[1], 0),
                         eq(self.lam_f[0], self.friction_coeff * self.lam_n),
                         le(self.lam_f[1], self.friction_coeff * self.lam_n),
                         ge(self.lam_f[1], -self.friction_coeff * self.lam_n),
@@ -513,7 +515,8 @@ class ContactPair:
                             for mode, p in self.position_type_force_variable_pairs.items()
                             if mode != self.position_mode
                         ],
-                        ge(self.rel_tangential_sliding_vel, 0),
+                        ge(self.rel_tangential_sliding_vel[1], 0),
+                        eq(self.rel_tangential_sliding_vel[0], 0),
                         eq(self.lam_f[1], -self.friction_coeff * self.lam_n),
                         le(self.lam_f[0], self.friction_coeff * self.lam_n),
                         ge(self.lam_f[0], -self.friction_coeff * self.lam_n),
@@ -535,7 +538,8 @@ class ContactPair:
                             for mode, p in self.position_type_force_variable_pairs.items()
                             if mode != self.position_mode
                         ],
-                        le(self.rel_tangential_sliding_vel, 0),
+                        le(self.rel_tangential_sliding_vel[1], 0),
+                        eq(self.rel_tangential_sliding_vel[0], 0),
                         eq(self.lam_f[1], self.friction_coeff * self.lam_n),
                         le(self.lam_f[0], self.friction_coeff * self.lam_n),
                         ge(self.lam_f[0], -self.friction_coeff * self.lam_n),
