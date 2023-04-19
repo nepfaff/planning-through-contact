@@ -9,12 +9,12 @@ import pydrake.symbolic as sym
 from pydrake.geometry.optimization import ConvexSet
 from pydrake.math import eq, ge, le
 
-from planning_through_contact.geometry.bezier import BezierVariable
 from planning_through_contact.geometry.contact_mode import (
     ContactMode,
     ContactModeConfig,
     ContactModeType,
     PositionModeType,
+    ForceVariablePair,
     calc_intersection_of_contact_modes,
 )
 from planning_through_contact.geometry.polyhedron import PolyhedronFormulator
@@ -27,6 +27,7 @@ class ContactPair:
     body_b: RigidBody
     friction_coeff: float
     position_mode: PositionModeType
+    position_type_force_variable_pairs: Dict[PositionModeType, ForceVariablePair]
     force_curve_order: int = 1  # TODO remove?
     allowable_contact_mode_types: List[ContactModeType] = field(
         default_factory=lambda: []
@@ -41,12 +42,10 @@ class ContactPair:
         )  # Contact normal from body A to body B
         self.d_hat = self._create_tangential_vec(self.n_hat)
 
-        self.lam_n = BezierVariable(
-            dim=1, order=self.force_curve_order, name=f"{self.name}_lam_n"
-        ).x  # Normal force
-        self.lam_f = BezierVariable(
-            dim=2, order=self.force_curve_order, name=f"{self.name}_lam_f"
-        ).x  # Friction force
+        # Forces between body_a and body_b
+        self.lam_n = self.position_type_force_variable_pairs[self.position_mode].lam_n
+        self.lam_f = self.position_type_force_variable_pairs[self.position_mode].lam_f
+
         self.additional_constraints = []
         self.contact_modes_formulated = False
 
@@ -409,9 +408,18 @@ class ContactPair:
         if ContactModeType.NO_CONTACT in self.allowable_contact_mode_types:
             modes_constraints[ContactModeType.NO_CONTACT] = [
                 ge(self.sdf, 0),
-                eq(self.lam_n, 0),
-                le(self.lam_f, self.friction_coeff * self.lam_n),
-                ge(self.lam_f, -self.friction_coeff * self.lam_n),
+                *[
+                    eq(p.lam_n, 0)
+                    for p in self.position_type_force_variable_pairs.values()
+                ],
+                *[
+                    le(p.lam_f, self.friction_coeff * p.lam_n)
+                    for p in self.position_type_force_variable_pairs.values()
+                ],
+                *[
+                    ge(p.lam_f, -self.friction_coeff * p.lam_n)
+                    for p in self.position_type_force_variable_pairs.values()
+                ],
                 *position_mode_constraints,
                 *self.force_balance,
                 *self.additional_constraints,
@@ -428,9 +436,20 @@ class ContactPair:
                 modes_constraints[ContactModeType.ROLLING] = [
                     eq(self.sdf, 0),
                     ge(self.lam_n, 0),
+                    *[
+                        eq(p.lam_n, 0)
+                        for mode, p in self.position_type_force_variable_pairs.items()
+                        if mode != self.position_mode
+                    ],
                     eq(self.rel_tangential_sliding_vel, 0),
-                    le(self.lam_f, self.friction_coeff * self.lam_n),
-                    ge(self.lam_f, -self.friction_coeff * self.lam_n),
+                    *[
+                        le(p.lam_f, self.friction_coeff * p.lam_n)
+                        for p in self.position_type_force_variable_pairs.values()
+                    ],
+                    *[
+                        ge(p.lam_f, -self.friction_coeff * p.lam_n)
+                        for p in self.position_type_force_variable_pairs.values()
+                    ],
                     *position_mode_constraints,
                     *self.force_balance,
                     *self.additional_constraints,
@@ -443,10 +462,20 @@ class ContactPair:
                     modes_constraints[ContactModeType.SLIDING_RIGHT] = [
                         eq(self.sdf, 0),
                         ge(self.lam_n, 0),
+                        *[
+                            eq(p.lam_n, 0)
+                            for mode, p in self.position_type_force_variable_pairs.items()
+                            if mode != self.position_mode
+                        ],
                         ge(self.rel_tangential_sliding_vel, 0),
                         eq(self.lam_f[0], -self.friction_coeff * self.lam_n),
                         le(self.lam_f[1], self.friction_coeff * self.lam_n),
                         ge(self.lam_f[1], -self.friction_coeff * self.lam_n),
+                        *[
+                            eq(p.lam_f, 0)
+                            for mode, p in self.position_type_force_variable_pairs.items()
+                            if mode != self.position_mode
+                        ],
                         *position_mode_constraints,
                         *self.force_balance,
                         *self.additional_constraints,
@@ -455,10 +484,20 @@ class ContactPair:
                     modes_constraints[ContactModeType.SLIDING_LEFT] = [
                         eq(self.sdf, 0),
                         ge(self.lam_n, 0),
+                        *[
+                            eq(p.lam_n, 0)
+                            for mode, p in self.position_type_force_variable_pairs.items()
+                            if mode != self.position_mode
+                        ],
                         le(self.rel_tangential_sliding_vel, 0),
                         eq(self.lam_f[0], self.friction_coeff * self.lam_n),
                         le(self.lam_f[1], self.friction_coeff * self.lam_n),
                         ge(self.lam_f[1], -self.friction_coeff * self.lam_n),
+                        *[
+                            eq(p.lam_f, 0)
+                            for mode, p in self.position_type_force_variable_pairs.items()
+                            if mode != self.position_mode
+                        ],
                         *position_mode_constraints,
                         *self.force_balance,
                         *self.additional_constraints,
@@ -469,10 +508,20 @@ class ContactPair:
                     modes_constraints[ContactModeType.SLIDING_UP] = [
                         eq(self.sdf, 0),
                         ge(self.lam_n, 0),
+                        *[
+                            eq(p.lam_n, 0)
+                            for mode, p in self.position_type_force_variable_pairs.items()
+                            if mode != self.position_mode
+                        ],
                         ge(self.rel_tangential_sliding_vel, 0),
                         eq(self.lam_f[1], -self.friction_coeff * self.lam_n),
                         le(self.lam_f[0], self.friction_coeff * self.lam_n),
                         ge(self.lam_f[0], -self.friction_coeff * self.lam_n),
+                        *[
+                            eq(p.lam_f, 0)
+                            for mode, p in self.position_type_force_variable_pairs.items()
+                            if mode != self.position_mode
+                        ],
                         *position_mode_constraints,
                         *self.force_balance,
                         *self.additional_constraints,
@@ -481,10 +530,20 @@ class ContactPair:
                     modes_constraints[ContactModeType.SLIDING_DOWN] = [
                         eq(self.sdf, 0),
                         ge(self.lam_n, 0),
+                        *[
+                            eq(p.lam_n, 0)
+                            for mode, p in self.position_type_force_variable_pairs.items()
+                            if mode != self.position_mode
+                        ],
                         le(self.rel_tangential_sliding_vel, 0),
                         eq(self.lam_f[1], self.friction_coeff * self.lam_n),
                         le(self.lam_f[0], self.friction_coeff * self.lam_n),
                         ge(self.lam_f[0], -self.friction_coeff * self.lam_n),
+                        *[
+                            eq(p.lam_f, 0)
+                            for mode, p in self.position_type_force_variable_pairs.items()
+                            if mode != self.position_mode
+                        ],
                         *position_mode_constraints,
                         *self.force_balance,
                         *self.additional_constraints,
@@ -607,6 +666,7 @@ class ObjectPairHandler:
         # |S| = |P_1| * |P_2| * ... * |P_n_p|
         #     = n_m * n_m * ... * n_m
         #     = n_m^n_p
+        # All possible permuations between object pairs
         all_possible_permutations = [
             ContactModeConfig({name: mode for name, mode in perm})
             for perm in itertools.product(*all_allowed_contact_modes)
@@ -622,7 +682,6 @@ class ObjectPairHandler:
             self.collision_pairs_by_name[pair].get_contact_mode(mode)
             for pair, mode in config.modes.items()
         ]
-        print(contact_modes)
         intersects, (
             calculated_name,
             intersection,

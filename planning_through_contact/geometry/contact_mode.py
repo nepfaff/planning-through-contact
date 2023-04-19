@@ -8,6 +8,7 @@ import numpy.typing as npt
 import pydrake.symbolic as sym
 from pydrake.geometry.optimization import ConvexSet
 
+from planning_through_contact.geometry.bezier import BezierVariable
 from planning_through_contact.geometry.polyhedron import PolyhedronFormulator
 
 
@@ -31,6 +32,12 @@ class PositionModeType(Enum):
     BOTTOM = 7
     BOTTOM_LEFT = 8
     FRONT = 9
+
+
+@dataclass
+class ForceVariablePair:
+    lam_n: BezierVariable
+    lam_f: BezierVariable
 
 
 @dataclass(eq=True)

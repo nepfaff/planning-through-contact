@@ -1,7 +1,6 @@
 import numpy as np
 import numpy.typing as npt
 
-
 def unit_vector(i: int, n: int):
     e_i = np.zeros(n)
     e_i[i] = 1
