@@ -11,10 +11,11 @@ from planning_through_contact.geometry.bezier import BezierVariable
 class RigidBody:
     name: str
     dim: int
-    geometry: Literal["point", "box"]
+    geometry: Literal["point", "box", "sphere"]
     width: float = 0  # TODO generalize
     height: float = 0
     depth: float = 0
+    radius: float = 0
     position_curve_order: int = 1
     actuated: bool = False
 

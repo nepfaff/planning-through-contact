@@ -23,6 +23,8 @@ class ObjectPair:
     allowable_contact_mode_types: List[ContactModeType] = field(
         default_factory=lambda: []
     )
+    transition_eps: float = 0
+    center_contact_buffer: float = 0
 
     def __post_init__(self):
         position_type_force_variable_pairs = {}
@@ -47,6 +49,8 @@ class ObjectPair:
                 position_type_force_variable_pairs,
                 self.force_curve_order,
                 self.allowable_contact_mode_types,
+                self.transition_eps,
+                self.center_contact_buffer,
             )
             for position_mode in self.allowed_position_modes
         ]
