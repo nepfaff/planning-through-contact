@@ -277,19 +277,29 @@ class ContactPair:
 
             if (
                 position_mode == PositionModeType.LEFT
+                or position_mode == PositionModeType.LEFT_TRANSITION
             ):  # body_a is on left side of body_b
                 dx = body_b.pos_x - body_a.pos_x - x_offset
                 dy = 0
                 dz = 0
-            elif position_mode == PositionModeType.RIGHT:
+            elif (
+                position_mode == PositionModeType.RIGHT
+                or position_mode == PositionModeType.RIGHT_TRANSITION
+            ):
                 dx = body_a.pos_x - body_b.pos_x - x_offset
                 dy = 0
                 dz = 0
-            elif position_mode == PositionModeType.TOP:  # body_a on top of body_b
+            elif (
+                position_mode == PositionModeType.TOP
+                or position_mode == PositionModeType.TOP_TRANSITION
+            ): # body_a on top of body_b
                 dx = 0
                 dy = body_a.pos_y - body_b.pos_y - y_offset
                 dz = 0
-            elif position_mode == PositionModeType.BOTTOM:
+            elif (
+                position_mode == PositionModeType.BOTTOM
+                or position_mode == PositionModeType.BOTTOM_TRANSITION
+            ):
                 dx = 0
                 dy = body_b.pos_y - body_a.pos_y - y_offset
                 dz = 0
