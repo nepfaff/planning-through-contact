@@ -106,9 +106,9 @@ class ContactPair:
                         y_constraint_bottom,
                     ]
                 )
-        else:
-            box = body_a if body_a.geometry == "box" else body_b
-            point = body_a if body_a.geometry == "point" else body_b
+        elif body_a.geometry == "point" and body_b.geometry == "box":
+            box = body_b
+            point = body_a
 
             if (
                 position_mode == PositionModeType.LEFT
@@ -146,6 +146,8 @@ class ContactPair:
                 raise NotImplementedError(
                     f"Position mode not implemented: {position_mode}"
                 )
+        else:
+            raise NotImplementedError(f"Position mode not implemented for body_a: {body_a.geometry} and body_b: {body_b.geometry}")
 
     def _create_signed_distance_func(
         self, body_a, body_b, position_mode: PositionModeType
