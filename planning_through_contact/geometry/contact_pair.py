@@ -107,9 +107,9 @@ class ContactPair:
                         y_constraint_bottom,
                     ]
                 )
-        elif (body_a.geometry == "sphere" and body_b.geometry == "box") or (body_a.geometry == "box" and body_b.geometry == "sphere"):
-            box = body_a if body_a.geometry == "box" else body_b
-            sphere = body_a if body_a.geometry == "sphere" else body_b
+        elif body_a.geometry == "point" and body_b.geometry == "box":
+            box = body_b
+            point = body_a
 
             if (
                 position_mode == PositionModeType.LEFT
@@ -182,45 +182,7 @@ class ContactPair:
                     f"Position mode not implemented: {position_mode}"
                 )
         else:
-            box = body_a if body_a.geometry == "box" else body_b
-            point = body_a if body_a.geometry == "point" else body_b
-
-            if (
-                position_mode == PositionModeType.LEFT
-                or position_mode == PositionModeType.RIGHT
-            ):
-                y_constraint_top = le(point.pos_y, box.pos_y + box.height)
-                y_constraint_bottom = ge(point.pos_y, box.pos_y - box.height)
-                return np.array([y_constraint_top, y_constraint_bottom])
-            elif (
-                position_mode == PositionModeType.TOP
-                or position_mode == PositionModeType.BOTTOM
-            ):
-                x_constraint_left = ge(point.pos_x, box.pos_x - box.width)
-                x_constraint_right = le(point.pos_x, box.pos_x + box.width)
-                return np.array([x_constraint_left, x_constraint_right])
-            elif position_mode == PositionModeType.TOP_LEFT:
-                x_constraint = le(point.pos_x, box.pos_x - box.width)
-                y_constraint = ge(point.pos_y, box.pos_y + box.height)
-                return np.array([x_constraint, y_constraint])
-            elif position_mode == PositionModeType.TOP_RIGHT:
-                x_constraint = ge(point.pos_x, box.pos_x + box.width)
-                y_constraint = ge(point.pos_y, box.pos_y + box.height)
-                return np.array([x_constraint, y_constraint])
-            elif position_mode == PositionModeType.BOTTOM_LEFT:
-                x_constraint = le(point.pos_x, box.pos_x - box.width)
-                y_constraint = le(point.pos_y, box.pos_y - box.height)
-                return np.array([x_constraint, y_constraint])
-            elif position_mode == PositionModeType.BOTTOM_RIGHT:
-                x_constraint = ge(point.pos_x, box.pos_x + box.width)
-                y_constraint = le(point.pos_y, box.pos_y - box.height)
-                return np.array([x_constraint, y_constraint])
-            elif position_mode == PositionModeType.FRONT:
-                raise NotImplementedError()
-            else:
-                raise NotImplementedError(
-                    f"Position mode not implemented: {position_mode}"
-                )
+            raise NotImplementedError(f"Position mode not implemented for body_a: {body_a.geometry} and body_b: {body_b.geometry}")
 
     def _create_signed_distance_func(
         self, body_a, body_b, position_mode: PositionModeType
