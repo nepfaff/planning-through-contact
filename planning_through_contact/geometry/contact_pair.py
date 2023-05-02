@@ -114,49 +114,49 @@ class ContactPair:
             if (
                 position_mode == PositionModeType.LEFT
             ):
-                y_constraint_top = le(sphere.pos_y + sphere.radius, box.pos_y + box.height) # top of the sphere is below top of the box
-                y_constraint_bottom = ge(sphere.pos_y - sphere.radius, box.pos_y - box.height) # bottom of the sphere is above the bottom of the box
-                x_constraint_left = le(sphere.pos_x + sphere.radius, box.pos_x - box.width - self.transition_eps) # right side of the sphere is to the left of the box with transition_eps buffer
+                y_constraint_top = le(sphere.pos_y - sphere.radius, box.pos_y + box.height) # top of the sphere is below top of the box
+                y_constraint_bottom = ge(sphere.pos_y + sphere.radius, box.pos_y - box.height) # bottom of the sphere is above the bottom of the box
+                x_constraint_left = le(sphere.pos_x, box.pos_x - box.width - self.transition_eps) # right side of the sphere is to the left of the box with transition_eps buffer
                 return np.array([y_constraint_top, y_constraint_bottom, x_constraint_left])
             if (
                 position_mode == PositionModeType.RIGHT
             ):
-                y_constraint_top = le(sphere.pos_y + sphere.radius, box.pos_y + box.height)
-                y_constraint_bottom = ge(sphere.pos_y - sphere.radius, box.pos_y - box.height)
-                x_constraint_right = ge(sphere.pos_x - sphere.radius, box.pos_x + box.width + self.transition_eps) # left side of the sphere is to the right of the box with transition_eps buffer
+                y_constraint_top = le(sphere.pos_y - sphere.radius, box.pos_y + box.height)
+                y_constraint_bottom = ge(sphere.pos_y + sphere.radius, box.pos_y - box.height)
+                x_constraint_right = ge(sphere.pos_x, box.pos_x + box.width + self.transition_eps)
                 return np.array([y_constraint_top, y_constraint_bottom, x_constraint_right])
             elif position_mode == PositionModeType.TOP:
-                x_constraint_left = ge(sphere.pos_x - sphere.radius, box.pos_x - box.width)
-                x_constraint_right = le(sphere.pos_x + sphere.radius, box.pos_x + box.width)
-                y_constraint_top = ge(sphere.pos_y - sphere.radius, box.pos_y + box.height + self.transition_eps)
+                x_constraint_left = ge(sphere.pos_x + sphere.radius, box.pos_x - box.width)
+                x_constraint_right = le(sphere.pos_x - sphere.radius, box.pos_x + box.width)
+                y_constraint_top = ge(sphere.pos_y, box.pos_y + box.height + self.transition_eps)
                 return np.array([x_constraint_left, x_constraint_right, y_constraint_top])
             elif position_mode == PositionModeType.BOTTOM:
-                x_constraint_left = ge(sphere.pos_x - sphere.radius, box.pos_x - box.width)
-                x_constraint_right = le(sphere.pos_x + sphere.radius, box.pos_x + box.width)
-                y_constraint_bottom = ge(sphere.pos_y + sphere.radius, box.pos_y - box.height - self.transition_eps)
+                x_constraint_left = ge(sphere.pos_x + sphere.radius, box.pos_x - box.width)
+                x_constraint_right = le(sphere.pos_x - sphere.radius, box.pos_x + box.width)
+                y_constraint_bottom = le(sphere.pos_y, box.pos_y - box.height - self.transition_eps)
                 return np.array([x_constraint_left, x_constraint_right, y_constraint_bottom])
             elif position_mode == PositionModeType.LEFT_TRANSITION:
                 y_constraint_top = le(sphere.pos_y + sphere.radius, box.pos_y + sphere.radius + self.center_contact_buffer)
                 y_constraint_bottom = ge(sphere.pos_y - sphere.radius, box.pos_y - sphere.radius - self.center_contact_buffer)
-                x_constraint_left = le(sphere.pos_x + sphere.radius, box.pos_x - box.width) # right of the sphere must be to the left of the box
-                x_constraint_right = ge(sphere.pos_x - sphere.radius, box.pos_x - box.width - self.transition_eps) # left of the sphere must be to the right of the left position mode
+                x_constraint_left = le(sphere.pos_x + sphere.radius, box.pos_x - box.width)
+                x_constraint_right = ge(sphere.pos_x, box.pos_x - box.width - self.transition_eps)
                 return np.array([y_constraint_top, y_constraint_bottom, x_constraint_left, x_constraint_right])
             elif position_mode == PositionModeType.RIGHT_TRANSITION:
                 y_constraint_top = le(sphere.pos_y + sphere.radius, box.pos_y + sphere.radius + self.center_contact_buffer)
                 y_constraint_bottom = ge(sphere.pos_y - sphere.radius, box.pos_y - sphere.radius - self.center_contact_buffer)
-                x_constraint_left = le(sphere.pos_x + sphere.radius, box.pos_x + box.width + self.transition_eps) # right of the sphere is to the left of the right position mode
+                x_constraint_left = le(sphere.pos_x, box.pos_x + box.width + self.transition_eps) # right of the sphere is to the left of the right position mode
                 x_constraint_right = ge(sphere.pos_x - sphere.radius, box.pos_x + box.width) # left of the sphere is to the right of the box
                 return np.array([y_constraint_top, y_constraint_bottom, x_constraint_left, x_constraint_right])
             elif position_mode == PositionModeType.TOP_TRANSITION:
                 x_constraint_left = le(sphere.pos_x + sphere.radius, box.pos_x + sphere.radius + self.center_contact_buffer)
                 x_constraint_right = ge(sphere.pos_x - sphere.radius, box.pos_x - sphere.radius - self.center_contact_buffer)
                 y_constraint_top = ge(sphere.pos_y - sphere.radius, box.pos_y + box.height) # bottom of the sphere is above the box 
-                y_constraint_bottom = le(sphere.pos_y + sphere.radius, box.pos_y + box.height + self.transition_eps) # top of the sphere is below the top position mode
+                y_constraint_bottom = le(sphere.pos_y, box.pos_y + box.height + self.transition_eps) # top of the sphere is below the top position mode
                 return np.array([y_constraint_top, y_constraint_bottom, x_constraint_left, x_constraint_right])
             elif position_mode == PositionModeType.BOTTOM_TRANSITION:
                 x_constraint_left = le(sphere.pos_x + sphere.radius, box.pos_x + sphere.radius + self.center_contact_buffer)
                 x_constraint_right = ge(sphere.pos_x - sphere.radius, box.pos_x - sphere.radius - self.center_contact_buffer)
-                y_constraint_top = ge(sphere.pos_y - sphere.radius, box.pos_y - box.height - self.transition_eps) # bottom of the sphere is above the bottom position mode
+                y_constraint_top = ge(sphere.pos_y, box.pos_y - box.height - self.transition_eps) # bottom of the sphere is above the bottom position mode
                 y_constraint_bottom = le(sphere.pos_y + sphere.radius, box.pos_y - box.height) # top of the sphere is below the bottom of the box
                 return np.array([y_constraint_top, y_constraint_bottom, x_constraint_left, x_constraint_right])
             elif position_mode == PositionModeType.TOP_LEFT:
@@ -169,11 +169,11 @@ class ContactPair:
                 return np.array([x_constraint, y_constraint])
             elif position_mode == PositionModeType.BOTTOM_LEFT:
                 x_constraint = le(sphere.pos_x + sphere.radius, box.pos_x - box.width)
-                y_constraint = le(point.pos_y + sphere.radius, box.pos_y - box.height)
+                y_constraint = le(sphere.pos_y + sphere.radius, box.pos_y - box.height)
                 return np.array([x_constraint, y_constraint])
             elif position_mode == PositionModeType.BOTTOM_RIGHT:
                 x_constraint = ge(sphere.pos_x - sphere.radius, box.pos_x + box.width)
-                y_constraint = le(point.pos_y + sphere.radius, box.pos_y - box.height)
+                y_constraint = le(sphere.pos_y + sphere.radius, box.pos_y - box.height)
                 return np.array([x_constraint, y_constraint])
             elif position_mode == PositionModeType.FRONT:
                 raise NotImplementedError()
@@ -351,13 +351,13 @@ class ContactPair:
                     f"2D position mode not implemented: {position_mode}"
                 )
         else:
-            if position_mode == PositionModeType.LEFT:  # body_a left side of body_b
+            if (position_mode == PositionModeType.LEFT) or (position_mode == PositionModeType.LEFT_TRANSITION):  # body_a left side of body_b
                 n_hat = np.array([[1, 0, 0]]).T
-            elif position_mode == PositionModeType.RIGHT:
+            elif (position_mode == PositionModeType.RIGHT) or (position_mode == PositionModeType.RIGHT_TRANSITION):
                 n_hat = np.array([[-1, 0, 0]]).T
-            elif position_mode == PositionModeType.TOP:
+            elif (position_mode == PositionModeType.TOP) or (position_mode == PositionModeType.TOP_TRANSITION):
                 n_hat = np.array([[0, -1, 0]]).T
-            elif position_mode == PositionModeType.BOTTOM:
+            elif (position_mode == PositionModeType.BOTTOM) or (position_mode == PositionModeType.BOTTOM_TRANSITION):
                 n_hat = np.array([[0, 1, 0]]).T
             elif position_mode == PositionModeType.FRONT:
                 n_hat = np.array([[0, 0, -1]]).T
@@ -782,6 +782,7 @@ class ObjectPairHandler:
             intersection,
         ) = calc_intersection_of_contact_modes(contact_modes)
 
+        # breakpoint()
         if not intersects:
             return None
 
@@ -796,5 +797,4 @@ class ObjectPairHandler:
             intersection = intersection.Intersection(additional_set)
 
         name = f"{name}: {calculated_name}" if name is not None else calculated_name
-
         return intersection, name
