@@ -107,16 +107,22 @@ class ContactPair:
                         y_constraint_bottom,
                     ]
                 )
-        elif body_a.geometry == "point" and body_b.geometry == "box":
+        elif body_a.geometry == "sphere" and body_b.geometry == "box":
             box = body_b
-            point = body_a
+            sphere = body_a
 
             if (
                 position_mode == PositionModeType.LEFT
             ):
                 y_constraint_top = le(sphere.pos_y - sphere.radius, box.pos_y + box.height) # top of the sphere is below top of the box
+                # Shouldn't this be: sphere.pos_y + sphere.radius <- isn't this the top of the sphere?
+
                 y_constraint_bottom = ge(sphere.pos_y + sphere.radius, box.pos_y - box.height) # bottom of the sphere is above the bottom of the box
+                # Shouldn't this be: sphere.pos_y - sphere.radius <- isn't this the bottom of the sphere?
+
                 x_constraint_left = le(sphere.pos_x, box.pos_x - box.width - self.transition_eps) # right side of the sphere is to the left of the box with transition_eps buffer
+                # Shouldn't this be: sphere.pos_x + sphere.radius <- isn't this the right side of the sphere?
+                
                 return np.array([y_constraint_top, y_constraint_bottom, x_constraint_left])
             if (
                 position_mode == PositionModeType.RIGHT
@@ -174,6 +180,45 @@ class ContactPair:
             elif position_mode == PositionModeType.BOTTOM_RIGHT:
                 x_constraint = ge(sphere.pos_x - sphere.radius, box.pos_x + box.width)
                 y_constraint = le(sphere.pos_y + sphere.radius, box.pos_y - box.height)
+                return np.array([x_constraint, y_constraint])
+            elif position_mode == PositionModeType.FRONT:
+                raise NotImplementedError()
+            else:
+                raise NotImplementedError(
+                    f"Position mode not implemented: {position_mode}"
+                )
+        elif body_a.geometry == "point" and body_b.geometry == "box":
+            box = body_b
+            point = body_a
+            if (
+                position_mode == PositionModeType.LEFT
+                or position_mode == PositionModeType.RIGHT
+            ):
+                y_constraint_top = le(point.pos_y, box.pos_y + box.height)
+                y_constraint_bottom = ge(point.pos_y, box.pos_y - box.height)
+                return np.array([y_constraint_top, y_constraint_bottom])
+            elif (
+                position_mode == PositionModeType.TOP
+                or position_mode == PositionModeType.BOTTOM
+            ):
+                x_constraint_left = ge(point.pos_x, box.pos_x - box.width)
+                x_constraint_right = le(point.pos_x, box.pos_x + box.width)
+                return np.array([x_constraint_left, x_constraint_right])
+            elif position_mode == PositionModeType.TOP_LEFT:
+                x_constraint = le(point.pos_x, box.pos_x - box.width)
+                y_constraint = ge(point.pos_y, box.pos_y + box.height)
+                return np.array([x_constraint, y_constraint])
+            elif position_mode == PositionModeType.TOP_RIGHT:
+                x_constraint = ge(point.pos_x, box.pos_x + box.width)
+                y_constraint = ge(point.pos_y, box.pos_y + box.height)
+                return np.array([x_constraint, y_constraint])
+            elif position_mode == PositionModeType.BOTTOM_LEFT:
+                x_constraint = le(point.pos_x, box.pos_x - box.width)
+                y_constraint = le(point.pos_y, box.pos_y - box.height)
+                return np.array([x_constraint, y_constraint])
+            elif position_mode == PositionModeType.BOTTOM_RIGHT:
+                x_constraint = ge(point.pos_x, box.pos_x + box.width)
+                y_constraint = le(point.pos_y, box.pos_y - box.height)
                 return np.array([x_constraint, y_constraint])
             elif position_mode == PositionModeType.FRONT:
                 raise NotImplementedError()
