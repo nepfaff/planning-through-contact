@@ -32,6 +32,10 @@ class PositionModeType(Enum):
     BOTTOM = 7
     BOTTOM_LEFT = 8
     FRONT = 9
+    TOP_TRANSITION = 10
+    BOTTOM_TRANSITION = 11
+    LEFT_TRANSITION = 12
+    RIGHT_TRANSITION = 13
 
 
 @dataclass

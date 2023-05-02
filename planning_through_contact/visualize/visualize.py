@@ -114,6 +114,9 @@ def animate_positions(
         elif b.geometry == "point":
             (finger,) = ax.plot([], [], "bo", lw=10)
             points[b.name] = finger
+        elif b.geometry == "sphere":
+            (finger,) = ax.plot([], [], "bo", lw=10)
+            points[b.name] = finger
 
     # TODO clean up
     n_frames = positions[list(positions.keys())[0]].shape[0]
@@ -138,6 +141,10 @@ def animate_positions(
                     positions[b.name][i, 1] + box_shapes[b.name][1, :],
                 )
             if b.geometry == "point":
+                points[b.name].set_data(
+                    positions[b.name][i, 0], positions[b.name][i, 1]
+                )
+            if b.geometry == "sphere":
                 points[b.name].set_data(
                     positions[b.name][i, 0], positions[b.name][i, 1]
                 )
