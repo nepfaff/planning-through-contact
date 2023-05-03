@@ -114,14 +114,9 @@ class ContactPair:
             if (
                 position_mode == PositionModeType.LEFT
             ):
-                y_constraint_top = le(sphere.pos_y - sphere.radius, box.pos_y + box.height) # top of the sphere is below top of the box
-                # Shouldn't this be: sphere.pos_y + sphere.radius <- isn't this the top of the sphere?
-
-                y_constraint_bottom = ge(sphere.pos_y + sphere.radius, box.pos_y - box.height) # bottom of the sphere is above the bottom of the box
-                # Shouldn't this be: sphere.pos_y - sphere.radius <- isn't this the bottom of the sphere?
-
-                x_constraint_left = le(sphere.pos_x, box.pos_x - box.width - self.transition_eps) # right side of the sphere is to the left of the box with transition_eps buffer
-                # Shouldn't this be: sphere.pos_x + sphere.radius <- isn't this the right side of the sphere?
+                y_constraint_top = le(sphere.pos_y - sphere.radius, box.pos_y + box.height) # bottom of the sphere is below top of the box
+                y_constraint_bottom = ge(sphere.pos_y + sphere.radius, box.pos_y - box.height) # top of the sphere is above the bottom of the box
+                x_constraint_left = le(sphere.pos_x, box.pos_x - box.width - self.transition_eps) # center of the sphere is to the left of the box with transition_eps buffer
                 
                 return np.array([y_constraint_top, y_constraint_bottom, x_constraint_left])
             if (

@@ -111,15 +111,60 @@ class ObjectPair:
             box = self.body_b
             sphere = self.body_a
 
-            y_le_top = body_a_pos_y <= body_b_pos_y + box.height
-            y_ge_top = body_a_pos_y >= body_b_pos_y + box.height
-            y_le_bottom = body_a_pos_y <= body_b_pos_y - box.height
-            y_ge_bottom = body_a_pos_y >= body_b_pos_y - box.height
-            x_le_left = body_a_pos_x <= body_b_pos_x - box.width
-            x_ge_left = body_a_pos_x >= body_b_pos_x - box.width
-            x_le_right = body_a_pos_x <= body_b_pos_x + box.width
-            x_ge_right = body_a_pos_x >= body_b_pos_x + box.width
+            sphere_top = body_a_pos_y + sphere.radius
+            sphere_bottom = body_a_pos_y - sphere.radius
+            sphere_right = body_a_pos_x + sphere.radius
+            sphere_left = body_a_pos_x - sphere.radius
 
+            box_top = body_b_pos_y + box.height
+            box_bottom = body_b_pos_y - box.height
+            box_right = body_b_pos_x + box.width
+            box_left = body_b_pos_x - box.width
+
+            # LEFT
+            if (sphere_bottom <= box_top) and (sphere_top >= box_bottom) and (body_a_pos_x <= box_left - self.transition_eps):
+                pos_mode = PositionModeType.LEFT
+            # RIGHT
+            elif (sphere_bottom <= box_top) and (sphere_top >= box_bottom) and (body_a_pos_x >= box_right + self.transition_eps):
+                pos_mode = PositionModeType.RIGHT
+            # TOP
+            elif (sphere_right >= box_left) and (sphere_left <= box_right) and (body_a_pos_y >= box_top + self.transition_eps):
+                pos_mode = PositionModeType.TOP
+            # BOTTOM
+            elif (sphere_right >= box_left) and (sphere_left <= box_right) and (body_a_pos_y <= box_bottom - self.transition_eps):
+                pos_mode = PositionModeType.BOTTOM
+            # HORIZONTAL TRANSITION
+            elif (sphere_top <= body_b_pos_y + sphere.radius + self.center_contact_buffer) and (sphere_bottom >= body_b_pos_y - sphere.radius - self.center_contact_buffer):
+                # LEFT TRANSTION
+                if (sphere_right <= box_left) and (body_a_pos_x >= box_left - self.transition_eps):
+                    pos_mode = PositionModeType.LEFT_TRANSITION
+                # RIGHT TRANSITION
+                elif (sphere_left >= box_right) and (body_a_pos_x <= box_right + self.transition_eps):
+                    pos_mode = PositionModeType.RIGHT_TRANSITION
+            # VERTICAL TRANSITIONS
+            elif (sphere_right <= body_b_pos_x + sphere.radius + self.center_contact_buffer) and (sphere_left >= body_b_pos_x - sphere.radius - self.center_contact_buffer):
+                # TOP TRANSITION
+                if (sphere_bottom >= box_top) and (body_a_pos_y <= box_top + self.transition_eps):
+                    pos_mode = PositionModeType.TOP_TRANSITION
+                # BOTTOM TRANSITION
+                elif (sphere_top <= box_bottom) and (body_a_pos_y >= box_bottom - self.transition_eps):
+                    pos_mode = PositionModeType.BOTTOM_TRANSITION
+            # TOP CORNERS
+            elif (sphere_bottom >= box_top):
+                # TOP LEFT
+                if (sphere_right <= box_left):
+                    pos_mode = PositionModeType.TOP_LEFT
+                # TOP RIGHT
+                elif (sphere_left >= box_right):
+                    pos_mode = PositionModeType.TOP_RIGHT
+            # BOTTOM CORNERS
+            elif (sphere_top <= box_bottom):
+                # BOTTOM LEFT
+                if (sphere_right <= box_left):
+                    pos_mode = PositionModeType.BOTTOM_LEFT
+                # BOTTOM RIGHT
+                elif (sphere_left >= box_right):
+                    pos_mode = PositionModeType.BOTTOM_RIGHT
 
         else:
             raise NotImplementedError(f"get_contact_pair_for_positions for {self.body_a.geometry} and {self.body_b.geometry} not implemented")
