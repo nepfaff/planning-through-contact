@@ -77,7 +77,7 @@ class ObjectPair:
         elif self.body_a.geometry == "point" and self.body_b.geometry == "box":
             box = self.body_b
             point = self.body_a
-
+            raise NotImplementedError("Not implemented for transition modes")
             y_le_top = body_a_pos_y <= body_b_pos_y + box.height
             y_ge_top = body_a_pos_y >= body_b_pos_y + box.height
             y_le_bottom = body_a_pos_y <= body_b_pos_y - box.height
@@ -107,6 +107,20 @@ class ObjectPair:
                 pos_mode = PositionModeType.BOTTOM_RIGHT
             else:
                 raise NotImplementedError(f"get_contact_pair_for_positions for {self.body_a.geometry}: {body_a_pos} and {self.body_b.geometry}: {body_b_pos} not implemented")
+        elif self.body_a.geometry == "sphere" and self.body_b.geometry == "box":
+            box = self.body_b
+            sphere = self.body_a
+
+            y_le_top = body_a_pos_y <= body_b_pos_y + box.height
+            y_ge_top = body_a_pos_y >= body_b_pos_y + box.height
+            y_le_bottom = body_a_pos_y <= body_b_pos_y - box.height
+            y_ge_bottom = body_a_pos_y >= body_b_pos_y - box.height
+            x_le_left = body_a_pos_x <= body_b_pos_x - box.width
+            x_ge_left = body_a_pos_x >= body_b_pos_x - box.width
+            x_le_right = body_a_pos_x <= body_b_pos_x + box.width
+            x_ge_right = body_a_pos_x >= body_b_pos_x + box.width
+
+
         else:
             raise NotImplementedError(f"get_contact_pair_for_positions for {self.body_a.geometry} and {self.body_b.geometry} not implemented")
         for pair in self.contact_pairs:
