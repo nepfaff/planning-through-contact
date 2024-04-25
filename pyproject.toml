@@ -32,6 +32,8 @@ diffusers = "0.11.1"
 robomimic = "0.2.0"
 einops = "0.4.1"
 numba = "^0.59.0"
+black = "^24.4.0"
+manipulation = {git = "https://github.com/RussTedrake/manipulation.git", rev = "072d5f0125faa252e511eb4728cafc8979e85fc7"}
 
 [tool.poetry.dev-dependencies]
 
