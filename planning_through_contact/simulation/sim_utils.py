@@ -5,12 +5,9 @@ from lxml import etree
 import copy
 
 from pydrake.all import (
-    LoadModelDirectives,
-    Parser,
-    ProcessModelDirectives,
-    MultibodyPlant,
     ContactModel,
     DiscreteContactApproximation,
+    LoadModelDirectives,
     ModelInstanceIndex,
     Box as DrakeBox,
     RigidBody as DrakeRigidBody,
@@ -20,8 +17,14 @@ from pydrake.all import (
     RigidTransform,
     Transform,
     RollPitchYaw,
+    MultibodyPlant,
+    Parser,
+    ProcessModelDirectives,
 )
 
+from planning_through_contact.geometry.collision_geometry.arbitrary_shape_2d import (
+    ArbitraryShape2D,
+)
 from planning_through_contact.geometry.collision_geometry.box_2d import Box2d
 from planning_through_contact.geometry.collision_geometry.t_pusher_2d import TPusher2d
 from planning_through_contact.geometry.collision_geometry.collision_geometry import (
@@ -102,6 +105,8 @@ def GetSliderUrl(sim_config, format: Literal["sdf", "yaml"] = "sdf"):
         slider_sdf_url = f"package://planning_through_contact/box_hydroelastic.{format}"
     elif isinstance(sim_config.slider.geometry, TPusher2d):
         slider_sdf_url = f"package://planning_through_contact/t_pusher.{format}"
+    elif isinstance(sim_config.slider.geometry, ArbitraryShape2D):
+        slider_sdf_url = f"package://planning_through_contact/arbitrary_shape.{format}"
     else:
         raise NotImplementedError(f"Body '{sim_config.slider}' not supported")
     return slider_sdf_url
