@@ -137,7 +137,7 @@ def generate_plans(data_collection_config: DataCollectionConfig):
     ## Get starts and goals
     plan_starts_and_goals = _get_plan_start_and_goals_to_point(
         seed=_plan_config.seed,
-        num_plans=int(1.1*_plan_config.num_plans), # Add extra plans in case some fail
+        num_plans=int(3*_plan_config.num_plans), # Add extra plans in case some fail
         workspace=workspace,
         config=config,
         point=_plan_config.center,
@@ -148,7 +148,7 @@ def generate_plans(data_collection_config: DataCollectionConfig):
     print(f"Finished generating start and goal pairs.")
 
     ## Generate plans
-    pbar = tqdm(total=_plan_config.num_plans)
+    pbar = tqdm(total=_plan_config.num_plans, desc="Generating plans")
     plan_idx = 0
     while plan_idx < _plan_config.num_plans and plan_idx < len(plan_starts_and_goals):
         plan = plan_starts_and_goals[plan_idx]
@@ -166,8 +166,10 @@ def generate_plans(data_collection_config: DataCollectionConfig):
         )
 
         if success:
-            plan_idx += 1
             pbar.update(1)
+        else:
+            print("Failed to generate plan. Retrying...")
+        plan_idx += 1
     print(f"Finished generating {plan_idx} plans.")
     if plan_idx < _plan_config.num_plans:
         print(f"Failed to generate all plans since the solver can fail.")
@@ -301,7 +303,7 @@ def simulate_plan(
     )
     
     recording_name = f"recording.html" if save_recording else None
-    environment.export_diagram("data_collection_table_environment.pdf")
+    # environment.export_diagram("data_collection_table_environment.pdf")
     environment.simulate(
         traj.end_time + sim_config.delay_before_execution + 0.5,
         recording_file=recording_name
