@@ -35,6 +35,7 @@ numba = "^0.59.0"
 black = "^24.4.0"
 lxml = "^5.2.1"
 manipulation = "2024.1.01"
+pyvirtualdisplay = "^3.0"
 
 [tool.poetry.dev-dependencies]
 
