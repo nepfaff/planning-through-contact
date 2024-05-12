@@ -1,57 +1,47 @@
-import numpy as np
-import math
-import matplotlib.pyplot as plt
-import pathlib
-import os
-import shutil
-from tqdm import tqdm
 import copy
-import logging
-from typing import List, Optional, Tuple
-import pickle
-import zarr
-from PIL import Image
 import importlib
-import hydra
-from omegaconf import OmegaConf
-import cv2
+import logging
+import math
+import os
+import pathlib
+import pickle
+import shutil
+from typing import List, Optional, Tuple
 
+import cv2
+import hydra
+import matplotlib.pyplot as plt
+import numpy as np
+import zarr
+from omegaconf import OmegaConf
+from PIL import Image
 from pydrake.all import (
     Meshcat,
-    StartMeshcat,
-    RollPitchYaw,
-    Transform,
-    RigidTransform,
     Rgba,
+    RigidTransform,
+    RollPitchYaw,
+    StartMeshcat,
+    Transform,
 )
+from tqdm import tqdm
 
-from planning_through_contact.simulation.planar_pushing.planar_pushing_sim_config import (
-    PlanarPushingSimConfig,
-)
-from planning_through_contact.simulation.environments.data_collection_table_environment import (
-    DataCollectionTableEnvironment,
-    DataCollectionConfig,
-)
 from planning_through_contact.experiments.utils import (
     get_default_plan_config,
     get_default_solver_params,
+)
+from planning_through_contact.geometry.planar.planar_pose import PlanarPose
+from planning_through_contact.geometry.planar.planar_pushing_trajectory import (
+    PlanarPushingTrajectory,
 )
 from planning_through_contact.planning.planar.planar_plan_config import (
     BoxWorkspace,
     PlanarPlanConfig,
     PlanarPushingStartAndGoal,
-    PlanarSolverParams,
     PlanarPushingWorkspace,
+    PlanarSolverParams,
 )
 from planning_through_contact.planning.planar.planar_pushing_planner import (
     PlanarPushingPlanner,
-)
-from planning_through_contact.geometry.planar.planar_pose import PlanarPose
-from planning_through_contact.simulation.sim_utils import get_slider_pose_within_workspace
-from planning_through_contact.visualize.colors import COLORS
-from planning_through_contact.visualize.planar_pushing import make_traj_figure
-from planning_through_contact.geometry.planar.planar_pushing_trajectory import (
-    PlanarPushingTrajectory,
 )
 from planning_through_contact.simulation.controllers.replay_position_source import (
     ReplayPositionSource,
@@ -59,6 +49,19 @@ from planning_through_contact.simulation.controllers.replay_position_source impo
 from planning_through_contact.simulation.controllers.robot_system_base import (
     RobotSystemBase,
 )
+from planning_through_contact.simulation.environments.data_collection_table_environment import (
+    DataCollectionConfig,
+    DataCollectionTableEnvironment,
+)
+from planning_through_contact.simulation.planar_pushing.planar_pushing_sim_config import (
+    PlanarPushingSimConfig,
+)
+from planning_through_contact.simulation.sim_utils import (
+    get_slider_pose_within_workspace,
+)
+from planning_through_contact.visualize.colors import COLORS
+from planning_through_contact.visualize.planar_pushing import make_traj_figure
+
 
 @hydra.main(
     version_base=None,
