@@ -35,6 +35,7 @@ from planning_through_contact.simulation.sim_utils import (
     models_folder,
     package_xml_file,
     GetSliderUrl,
+    get_slider_sdf_path,
     randomize_camera_config,
     randomize_pusher,
     randomize_table,
@@ -82,7 +83,7 @@ class IiwaHardwareStation(RobotSystemBase):
             )
 
             def add_slider_to_parser(parser): 
-                sdf_file = f'{models_folder}/t_pusher.sdf'
+                sdf_file = get_slider_sdf_path(sim_config, models_folder)
                 safe_parse = etree.XMLParser(recover=True)
                 tree = etree.parse(sdf_file, safe_parse)
                 root = tree.getroot()
@@ -390,8 +391,12 @@ class IiwaHardwareStation(RobotSystemBase):
         """The name of the robot model."""
         if self._sim_config.slider.name == "box":
             return "box"
-        else:
+        elif self._sim_config.slider.name == "tee":
             return "t_pusher"
+        elif self._sim_config.slider.name == "arbitrary":
+            return "arbitrary_shape"
+        else:
+            raise ValueError(f"Invalid slider name: {self._sim_config.slider.name}")
         
     def num_positions(self) -> int:
         return self._num_positions
