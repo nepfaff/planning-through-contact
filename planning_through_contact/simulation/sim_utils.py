@@ -3,7 +3,7 @@ import numpy as np
 from typing import Literal, List
 from lxml import etree
 import copy
-
+import time
 from pydrake.all import (
     ContactModel,
     DiscreteContactApproximation,
@@ -276,11 +276,16 @@ def get_slider_pose_within_workspace(
     config: PlanarPlanConfig,
     limit_rotations: bool = False,
     enforce_entire_slider_within_workspace: bool = True,
+    timeout_s: float = 10.0,
 ) -> PlanarPose:
     valid_pose = False
 
+    start_time = time.time()
     slider_pose = None
     while not valid_pose:
+        if time.time() - start_time > timeout_s:
+            raise ValueError("Could not find a valid slider pose within the timeout.")
+
         x_initial = np.random.uniform(workspace.slider.x_min, workspace.slider.x_max)
         y_initial = np.random.uniform(workspace.slider.y_min, workspace.slider.y_max)
         EPS = 0.01
