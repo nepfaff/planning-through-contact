@@ -52,6 +52,7 @@ class MultiRunConfig:
             max_attempt_duration: float, 
             seed: int, 
             slider_type: str,
+            arbitrary_shape_pickle_path: str,
             pusher_start_pose: PlanarPose,
             slider_goal_pose: PlanarPose,
             workspace_width: float,
@@ -64,13 +65,14 @@ class MultiRunConfig:
         # Set up multi run config
         config = get_default_plan_config(
             slider_type=slider_type,
+            arbitrary_shape_pickle_path=arbitrary_shape_pickle_path,
             pusher_radius=0.015,
             hardware=False,
         )
         # update config (probably don't need these)
         config.contact_config.lam_min = 0.15
         config.contact_config.lam_max = 0.85
-        config.non_collision_cost.distance_to_object_socp = 0.25   
+        config.non_collision_cost.distance_to_object_socp = 0.25
 
         # Get initial slider poses
         workspace = PlanarPushingWorkspace(
@@ -177,7 +179,7 @@ class PlanarPushingSimConfig:
         elif cfg.slider_type == "tee":
             slider: RigidBody = get_tee()
         elif cfg.slider_type == "arbitrary":
-            slider = get_arbitrary()
+            slider = get_arbitrary(cfg.arbitrary_shape_pickle_path)
         else:
             raise ValueError(f"Slider type not yet implemented: {cfg.slider_type}")        
         dynamics_config: SliderPusherSystemConfig = hydra.utils.instantiate(
