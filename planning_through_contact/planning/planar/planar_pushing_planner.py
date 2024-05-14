@@ -598,6 +598,7 @@ class PlanarPushingPlanner:
 
         feasible_paths = self._get_rounded_paths(solver_params, paths)
         if feasible_paths is None:
+            print("Failed to find feasible paths after rounding!")
             return None
         
         return feasible_paths
