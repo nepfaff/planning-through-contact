@@ -1,30 +1,33 @@
 import logging
 import os
+import pickle
+from dataclasses import dataclass
+from math import ceil
 from typing import Optional
+
 import cv2
 import numpy as np
-from math import ceil
-from dataclasses import dataclass
 from PIL import Image
-
-import pickle
 from pydrake.all import (
     DiagramBuilder,
+    DiscreteTimeDelay,
     LogVectorOutput,
     Meshcat,
     Simulator,
     StateInterpolatorWithDiscreteDerivative,
-    DiscreteTimeDelay,
-    ZeroOrderHold
+    ZeroOrderHold,
 )
-from pydrake.systems.sensors import (
-    ImageWriter,
-    PixelType
-)
+from pydrake.systems.sensors import ImageWriter, PixelType
 
 from planning_through_contact.geometry.planar.planar_pose import PlanarPose
+from planning_through_contact.simulation.controllers.cylinder_actuated_station import (
+    CylinderActuatedStation,
+)
 from planning_through_contact.simulation.controllers.desired_planar_position_source_base import (
     DesiredPlanarPositionSourceBase,
+)
+from planning_through_contact.simulation.controllers.replay_position_source import (
+    ReplayPositionSource,
 )
 from planning_through_contact.simulation.controllers.robot_system_base import (
     RobotSystemBase,
@@ -36,27 +39,21 @@ from planning_through_contact.simulation.planar_pushing.planar_pushing_sim_confi
     PlanarPushingSimConfig,
 )
 from planning_through_contact.simulation.sensors.optitrack_config import OptitrackConfig
+from planning_through_contact.simulation.sim_utils import LoadRobotOnly
 from planning_through_contact.simulation.state_estimators.state_estimator import (
     StateEstimator,
 )
+from planning_through_contact.simulation.systems.diff_ik_system import DiffIKSystem
 from planning_through_contact.simulation.systems.planar_pose_to_generalized_coords import (
     PlanarPoseToGeneralizedCoords,
-)
-from planning_through_contact.visualize.analysis import (
-    PlanarPushingLog,
 )
 from planning_through_contact.simulation.systems.planar_translation_to_rigid_transform_system import (
     PlanarTranslationToRigidTransformSystem,
 )
-from planning_through_contact.simulation.systems.diff_ik_system import DiffIKSystem
-from planning_through_contact.simulation.sim_utils import LoadRobotOnly
-from planning_through_contact.simulation.controllers.replay_position_source import (
-    ReplayPositionSource,
+from planning_through_contact.visualize.analysis import (
+    CombinedPlanarPushingLogs,
+    PlanarPushingLog,
 )
-from planning_through_contact.simulation.controllers.cylinder_actuated_station import (
-    CylinderActuatedStation,
-)
-from planning_through_contact.visualize.analysis import CombinedPlanarPushingLogs
 
 logger = logging.getLogger(__name__)
 

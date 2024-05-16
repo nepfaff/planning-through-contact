@@ -117,21 +117,21 @@ class PlanarPushingPlanner:
         self.edges = {}
         if self.config.allow_teleportation:
             for i, j in combinations(range(self.num_contact_modes), 2):
-                self.edges[(self.contact_modes[i].name, self.contact_modes[j].name)] = (
-                    gcs_add_edge_with_continuity(
-                        self.gcs,
-                        VertexModePair(self.contact_vertices[i], self.contact_modes[i]),
-                        VertexModePair(self.contact_vertices[j], self.contact_modes[j]),
-                        only_continuity_on_slider=True,
-                    )
+                self.edges[
+                    (self.contact_modes[i].name, self.contact_modes[j].name)
+                ] = gcs_add_edge_with_continuity(
+                    self.gcs,
+                    VertexModePair(self.contact_vertices[i], self.contact_modes[i]),
+                    VertexModePair(self.contact_vertices[j], self.contact_modes[j]),
+                    only_continuity_on_slider=True,
                 )
-                self.edges[(self.contact_modes[j].name, self.contact_modes[i].name)] = (
-                    gcs_add_edge_with_continuity(
-                        self.gcs,
-                        VertexModePair(self.contact_vertices[j], self.contact_modes[j]),
-                        VertexModePair(self.contact_vertices[i], self.contact_modes[i]),
-                        only_continuity_on_slider=True,
-                    )
+                self.edges[
+                    (self.contact_modes[j].name, self.contact_modes[i].name)
+                ] = gcs_add_edge_with_continuity(
+                    self.gcs,
+                    VertexModePair(self.contact_vertices[j], self.contact_modes[j]),
+                    VertexModePair(self.contact_vertices[i], self.contact_modes[i]),
+                    only_continuity_on_slider=True,
                 )
         else:
             # connect contact modes through NonCollisionSubGraphs
@@ -313,25 +313,25 @@ class PlanarPushingPlanner:
             for contact_vertex, contact_mode in zip(
                 self.contact_vertices, self.contact_modes
             ):
-                self.edges[("source", contact_mode.name)] = (
-                    gcs_add_edge_with_continuity(
-                        self.gcs,
-                        pair,
-                        VertexModePair(contact_vertex, contact_mode),
-                        only_continuity_on_slider=True,
-                    )
+                self.edges[
+                    ("source", contact_mode.name)
+                ] = gcs_add_edge_with_continuity(
+                    self.gcs,
+                    pair,
+                    VertexModePair(contact_vertex, contact_mode),
+                    only_continuity_on_slider=True,
                 )
         else:  # contact modes to target
             for contact_vertex, contact_mode in zip(
                 self.contact_vertices, self.contact_modes
             ):
-                self.edges[(contact_mode.name, "target")] = (
-                    gcs_add_edge_with_continuity(
-                        self.gcs,
-                        VertexModePair(contact_vertex, contact_mode),
-                        pair,
-                        only_continuity_on_slider=True,
-                    )
+                self.edges[
+                    (contact_mode.name, "target")
+                ] = gcs_add_edge_with_continuity(
+                    self.gcs,
+                    VertexModePair(contact_vertex, contact_mode),
+                    pair,
+                    only_continuity_on_slider=True,
                 )
 
         return pair
@@ -556,7 +556,9 @@ class PlanarPushingPlanner:
 
         return path
 
-    def pick_top_k_paths(self, paths: List[PlanarPushingPath], k: int) -> PlanarPushingPath:
+    def pick_top_k_paths(
+        self, paths: List[PlanarPushingPath], k: int
+    ) -> PlanarPushingPath:
         rounded_costs = [
             p.rounded_result.get_optimal_cost()
             for p in paths
@@ -588,7 +590,7 @@ class PlanarPushingPlanner:
             print(f"path: {self.path.get_path_names()}")
 
         return self.path
-    
+
     def plan_multiple_paths(
         self, solver_params: PlanarSolverParams
     ) -> List[PlanarPushingPath]:
@@ -600,7 +602,7 @@ class PlanarPushingPlanner:
         if feasible_paths is None:
             print("Failed to find feasible paths after rounding!")
             return None
-        
+
         return feasible_paths
 
     def _print_edge_flows(self, result: MathematicalProgramResult) -> None:

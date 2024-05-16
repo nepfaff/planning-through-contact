@@ -1,4 +1,3 @@
-import copy
 import importlib
 import logging
 import math
@@ -10,19 +9,11 @@ from typing import List, Optional, Tuple
 
 import cv2
 import hydra
-import matplotlib.pyplot as plt
 import numpy as np
 import zarr
 from omegaconf import OmegaConf
 from PIL import Image
-from pydrake.all import (
-    Meshcat,
-    Rgba,
-    RigidTransform,
-    RollPitchYaw,
-    StartMeshcat,
-    Transform,
-)
+from pydrake.all import Meshcat, StartMeshcat
 from tqdm import tqdm
 
 from planning_through_contact.experiments.utils import (
@@ -62,7 +53,6 @@ from planning_through_contact.simulation.sim_utils import (
     models_folder,
 )
 from planning_through_contact.tools.utils import (
-    PhysicalProperties,
     create_processed_mesh_primitive_sdf_file,
     load_primitive_info,
 )
@@ -72,8 +62,7 @@ from planning_through_contact.visualize.planar_pushing import make_traj_figure
 
 @hydra.main(
     version_base=None,
-    config_path=str(pathlib.Path(__file__).parents[3].joinpath(
-        'config','sim_config'))
+    config_path=str(pathlib.Path(__file__).parents[3].joinpath("config", "sim_config")),
 )
 def main(cfg: OmegaConf):
     """
@@ -88,13 +77,15 @@ def main(cfg: OmegaConf):
     logging.getLogger(
         "planning_through_contact.simulation.environments.data_collection_table_environment"
     ).setLevel(logging.WARNING)
-    logging.getLogger('drake').setLevel(logging.WARNING)
+    logging.getLogger("drake").setLevel(logging.WARNING)
 
     ## Parse Configs
     sim_config: PlanarPushingSimConfig = PlanarPushingSimConfig.from_yaml(cfg)
     _print_sim_config_info(sim_config)
 
-    data_collection_config: DataCollectionConfig = hydra.utils.instantiate(cfg.data_collection_config)
+    data_collection_config: DataCollectionConfig = hydra.utils.instantiate(
+        cfg.data_collection_config
+    )
     _print_data_collection_config_info(data_collection_config)
 
     ## Generate plans
@@ -104,20 +95,27 @@ def main(cfg: OmegaConf):
 
     ## Render plans
     if data_collection_config.render_plans:
-        render_plans(sim_config, data_collection_config, cfg)
-        save_omegaconf(cfg, data_collection_config.rendered_plans_dir, config_name="config.yaml")
+        render_plans(sim_config, data_collection_config, cfg, save_recordings=False)
+        save_omegaconf(
+            cfg, data_collection_config.rendered_plans_dir, config_name="config.yaml"
+        )
 
     ## Convert data to zarr
-    if data_collection_config.convert_to_zarr or data_collection_config.convert_to_zarr_reduce:
+    if (
+        data_collection_config.convert_to_zarr
+        or data_collection_config.convert_to_zarr_reduce
+    ):
         convert_to_zarr(data_collection_config, debug=False)
 
-def save_omegaconf(cfg: OmegaConf, dir: str, config_name: str="config.yaml"):
+
+def save_omegaconf(cfg: OmegaConf, dir: str, config_name: str = "config.yaml"):
     with open(f"{dir}/{config_name}", "w") as f:
         OmegaConf.save(cfg, f)
 
+
 def generate_plans(data_collection_config: DataCollectionConfig, cfg: OmegaConf):
     """Generates plans according to the data collection config."""
-    
+
     print("\nGenerating plans...")
 
     _create_directory(data_collection_config.plans_dir)
@@ -134,7 +132,9 @@ def generate_plans(data_collection_config: DataCollectionConfig, cfg: OmegaConf)
     solver_params = get_default_solver_params(debug=False, clarabel=False)
     config.contact_config.lam_min = _plan_config.contact_lam_min
     config.contact_config.lam_max = _plan_config.contact_lam_max
-    config.non_collision_cost.distance_to_object_socp = _plan_config.distance_to_object_socp
+    config.non_collision_cost.distance_to_object_socp = (
+        _plan_config.distance_to_object_socp
+    )
 
     ## Set up workspace
     workspace = PlanarPushingWorkspace(
@@ -145,11 +145,11 @@ def generate_plans(data_collection_config: DataCollectionConfig, cfg: OmegaConf)
             buffer=_plan_config.buffer,
         ),
     )
-    
+
     ## Get starts and goals
     plan_starts_and_goals = _get_plan_start_and_goals_to_point(
         seed=_plan_config.seed,
-        num_plans=int(3*_plan_config.num_plans), # Add extra plans in case some fail
+        num_plans=int(3 * _plan_config.num_plans),  # Add extra plans in case some fail
         workspace=workspace,
         config=config,
         point=_plan_config.center,
@@ -167,11 +167,11 @@ def generate_plans(data_collection_config: DataCollectionConfig, cfg: OmegaConf)
         plan = plan_starts_and_goals[plan_idx]
 
         success = create_plan(
-            plan_spec = plan,
+            plan_spec=plan,
             config=config,
             solver_params=solver_params,
             num_unique_plans=_plan_config.num_unique_plans,
-            sort_plans = _plan_config.sort_plans,
+            sort_plans=_plan_config.sort_plans,
             output_dir=data_collection_config.plans_dir,
             traj_name=f"traj_{plan_idx}",
             do_rounding=True,
@@ -188,6 +188,7 @@ def generate_plans(data_collection_config: DataCollectionConfig, cfg: OmegaConf)
     if num_plans < _plan_config.num_plans:
         print(f"Failed to generate all plans since the solver can fail.")
 
+
 def create_plan(
     plan_spec: PlanarPushingStartAndGoal,
     config: PlanarPlanConfig,
@@ -197,7 +198,7 @@ def create_plan(
     output_dir: str = "",
     traj_name: str = "Untitled_traj",
     do_rounding: bool = True,
-    save_traj: bool = False
+    save_traj: bool = False,
 ) -> bool:
     """
     Create plans according to plan_spec and other config params.
@@ -216,13 +217,13 @@ def create_plan(
     if len(paths) < num_unique_plans:
         print("Failed to generate enough unique plans.")
         return False
-    
+
     # Perform top k sorting if required
     if sort_plans:
         paths = planner.pick_top_k_paths(paths, num_unique_plans)
     else:
         paths = paths[:num_unique_plans]
-    
+
     for i in range(num_unique_plans):
         path = paths[i]
 
@@ -255,6 +256,7 @@ def create_plan(
 
     return True
 
+
 def render_plans(
     sim_config: PlanarPushingSimConfig,
     data_collection_config: DataCollectionConfig,
@@ -273,7 +275,7 @@ def render_plans(
         if os.path.isdir(f"{data_collection_config.plans_dir}/{plan_dir}"):
             plan_path = f"{data_collection_config.plans_dir}/{plan_dir}/trajectory/traj_rounded.pkl"
             plans.append(PlanarPushingTrajectory.load(plan_path))
-    
+
     meshcat = StartMeshcat()
     for plan in tqdm(plans):
         simulate_plan(
@@ -286,31 +288,13 @@ def render_plans(
         )
         meshcat.Delete()
         meshcat.DeleteAddedControls()
-        
+
     if cfg.slider_type == "arbitrary":
         # Remove the sdf file.
         sdf_path = get_slider_sdf_path(sim_config, models_folder)
         if os.path.exists(sdf_path):
             os.remove(sdf_path)
 
-def create_arbitrary_shape_sdf_file(cfg: OmegaConf, sim_config: PlanarPushingSimConfig):
-    sdf_path = get_slider_sdf_path(sim_config, models_folder)
-    if os.path.exists(sdf_path):
-        os.remove(sdf_path)
-
-    translation = -np.concatenate([sim_config.slider.geometry.com_offset.flatten(), [0]])
-
-    primitive_info = load_primitive_info(cfg.arbitrary_shape_pickle_path)
-    create_processed_mesh_primitive_sdf_file(
-        primitive_info=primitive_info,
-        physical_properties=hydra.utils.instantiate(cfg.physical_properties),
-        global_translation=translation,
-        output_file_path=sdf_path,
-        model_name="arbitrary_shape",
-        base_link_name="arbitrary_shape",
-        is_hydroelastic="hydroelastic" in cfg.contact_model.lower(),
-        rgba=[0.0, 0.0, 0.0, 1.0],
-    )
 
 def simulate_plan(
     traj: PlanarPushingTrajectory,
@@ -319,13 +303,11 @@ def simulate_plan(
     cfg: OmegaConf,
     meshcat: Meshcat,
     save_recording: bool = False,
-):  
+):
     """Simulate a single plan to render the images."""
 
     position_source = ReplayPositionSource(
-        traj=traj,
-        dt = 0.025,
-        delay=sim_config.delay_before_execution
+        traj=traj, dt=0.025, delay=sim_config.delay_before_execution
     )
 
     ## Set up position controller
@@ -333,8 +315,7 @@ def simulate_plan(
     module_name, class_name = cfg.robot_station._target_.rsplit(".", 1)
     robot_system_class = getattr(importlib.import_module(module_name), class_name)
     position_controller: RobotSystemBase = robot_system_class(
-        sim_config=sim_config, 
-        meshcat=meshcat
+        sim_config=sim_config, meshcat=meshcat
     )
 
     environment = DataCollectionTableEnvironment(
@@ -344,16 +325,17 @@ def simulate_plan(
         data_collection_config=data_collection_config,
         state_estimator_meshcat=meshcat,
     )
-    
+
     recording_name = f"recording.html" if save_recording else None
     # environment.export_diagram("data_collection_table_environment.pdf")
     environment.simulate(
         traj.end_time + sim_config.delay_before_execution + 0.5,
-        recording_file=recording_name
+        recording_file=recording_name,
     )
     environment.resize_saved_images()
 
-def convert_to_zarr(data_collection_config: DataCollectionConfig, debug: bool=False):
+
+def convert_to_zarr(data_collection_config: DataCollectionConfig, debug: bool = False):
     """
     Converts the rendered plans to zarr format.
 
@@ -422,11 +404,9 @@ def convert_to_zarr(data_collection_config: DataCollectionConfig, debug: bool=Fa
 
     freq = data_collection_config.policy_freq
     dt = 1 / freq
-    desired_image_shape = np.array([
-        data_collection_config.image_width,
-        data_collection_config.image_height,
-        3
-    ])
+    desired_image_shape = np.array(
+        [data_collection_config.image_width, data_collection_config.image_height, 3]
+    )
 
     for traj_dir in tqdm(traj_dir_list):
         image_dir = traj_dir.joinpath("images")
@@ -442,16 +422,16 @@ def convert_to_zarr(data_collection_config: DataCollectionConfig, debug: bool=Fa
                     continue
 
         # load pickle file and timing variables
-        combined_logs = pickle.load(open(traj_log_path, 'rb'))
+        combined_logs = pickle.load(open(traj_log_path, "rb"))
         pusher_desired = combined_logs.pusher_desired
         slider_desired = combined_logs.slider_desired
-        
+
         t = pusher_desired.t
         total_time = math.floor(t[-1] * freq) / freq
-        
+
         # get start time
-        start_idx = _get_start_idx(pusher_desired)   
-        start_time = math.ceil(t[start_idx]*freq) / freq
+        start_idx = _get_start_idx(pusher_desired)
+        start_time = math.ceil(t[start_idx] * freq) / freq
 
         # get state, action, images
         current_time = start_time
@@ -462,31 +442,36 @@ def convert_to_zarr(data_collection_config: DataCollectionConfig, debug: bool=Fa
         while current_time < total_time:
             # state and action
             idx = _get_closest_index(t, current_time, idx)
-            current_state = np.array([
-                pusher_desired.x[idx], 
-                pusher_desired.y[idx], 
-                pusher_desired.theta[idx]
-            ])
-            current_slider_state = np.array([
-                slider_desired.x[idx],
-                slider_desired.y[idx],
-                slider_desired.theta[idx]
-            ])
+            current_state = np.array(
+                [
+                    pusher_desired.x[idx],
+                    pusher_desired.y[idx],
+                    pusher_desired.theta[idx],
+                ]
+            )
+            current_slider_state = np.array(
+                [
+                    slider_desired.x[idx],
+                    slider_desired.y[idx],
+                    slider_desired.theta[idx],
+                ]
+            )
             state.append(current_state)
             slider_state.append(current_slider_state)
-        
+
             # image
             # This line can be simplified but it is clearer this way.
             # Image names are "{time in ms}" rounded to the nearest 100th
             image_name = round((current_time * 1000) / 100) * 100
             image_path = image_dir.joinpath(f"{int(image_name)}.png")
-            img = Image.open(image_path).convert('RGB')
+            img = Image.open(image_path).convert("RGB")
             img = np.asarray(img)
             if not np.allclose(img.shape, desired_image_shape):
                 img = cv2.resize(img, (desired_image_shape[1], desired_image_shape[0]))
             images.append(img)
             if debug:
                 from matplotlib import pyplot as plt
+
                 print(f"\nCurrent time: {current_time}")
                 print(f"Current index: {idx}")
                 print(f"Image path: {image_path}")
@@ -497,17 +482,15 @@ def convert_to_zarr(data_collection_config: DataCollectionConfig, debug: bool=Fa
             # update current time
             current_time = round((current_time + dt) * freq) / freq
 
-        state = np.array(state) # T x 3
-        slider_state = np.array(slider_state) # T x 3
-        action = np.array(state)[:,:2] # T x 2
-        action = np.concatenate([action[1:, :], action[-1:, :]], axis=0) # shift action
+        state = np.array(state)  # T x 3
+        slider_state = np.array(slider_state)  # T x 3
+        action = np.array(state)[:, :2]  # T x 2
+        action = np.concatenate([action[1:, :], action[-1:, :]], axis=0)  # shift action
         images = np.array(images)
 
         # get target
-        target = np.array([
-            pusher_desired.x[-1],
-            pusher_desired.y[-1],
-            pusher_desired.theta[-1]]
+        target = np.array(
+            [pusher_desired.x[-1], pusher_desired.y[-1], pusher_desired.theta[-1]]
         )
         target = np.array([target for _ in range(len(state))])
 
@@ -519,22 +502,27 @@ def convert_to_zarr(data_collection_config: DataCollectionConfig, debug: bool=Fa
         concatenated_targets.append(target)
         episode_ends.append(current_end + len(state))
         current_end += len(state)
-    
-    print(f"{len(traj_dir_list)-len(episode_ends)} of {len(traj_dir_list)} rollouts were skipped due to IK fails.")
+
+    print(
+        f"{len(traj_dir_list)-len(episode_ends)} of {len(traj_dir_list)} rollouts were skipped due to IK fails."
+    )
 
     # save to zarr
     zarr_path = data_collection_config.zarr_path
-    root = zarr.open_group(zarr_path, mode='w')
-    data_group = root.create_group('data')
-    meta_group = root.create_group('meta')
+    root = zarr.open_group(zarr_path, mode="w")
+    data_group = root.create_group("data")
+    meta_group = root.create_group("meta")
 
     # Chunk sizes optimized for read (not for supercloud storage, sorry admins)
     state_chunk_size = (data_collection_config.state_chunk_length, state.shape[1])
-    slider_state_chunk_size = (data_collection_config.state_chunk_length, state.shape[1])
+    slider_state_chunk_size = (
+        data_collection_config.state_chunk_length,
+        state.shape[1],
+    )
     action_chunk_size = (data_collection_config.action_chunk_length, action.shape[1])
     target_chunk_size = (data_collection_config.target_chunk_length, target.shape[1])
     image_chunk_size = (data_collection_config.image_chunk_length, *images[0].shape)
-    
+
     # convert to numpy
     concatenated_states = np.concatenate(concatenated_states, axis=0)
     concatenated_slider_states = np.concatenate(concatenated_slider_states, axis=0)
@@ -542,7 +530,7 @@ def convert_to_zarr(data_collection_config: DataCollectionConfig, debug: bool=Fa
     concatenated_images = np.concatenate(concatenated_images, axis=0)
     concatenated_targets = np.concatenate(concatenated_targets, axis=0)
     episode_ends = np.array(episode_ends)
-    
+
     assert episode_ends[-1] == concatenated_states.shape[0]
     assert concatenated_states.shape[0] == concatenated_slider_states.shape[0]
     assert concatenated_states.shape[0] == concatenated_actions.shape[0]
@@ -550,34 +538,20 @@ def convert_to_zarr(data_collection_config: DataCollectionConfig, debug: bool=Fa
     assert concatenated_states.shape[0] == concatenated_targets.shape[0]
 
     data_group.create_dataset(
-        'state', 
-        data=concatenated_states, 
-        chunks=state_chunk_size
+        "state", data=concatenated_states, chunks=state_chunk_size
     )
     data_group.create_dataset(
-        'slider_state',
-        data=concatenated_slider_states,
-        chunks=slider_state_chunk_size
+        "slider_state", data=concatenated_slider_states, chunks=slider_state_chunk_size
     )
     data_group.create_dataset(
-        'action', 
-        data=concatenated_actions, 
-        chunks=action_chunk_size
+        "action", data=concatenated_actions, chunks=action_chunk_size
     )
+    data_group.create_dataset("img", data=concatenated_images, chunks=image_chunk_size)
     data_group.create_dataset(
-        'img', 
-        data=concatenated_images, 
-        chunks=image_chunk_size
+        "target", data=concatenated_targets, chunks=target_chunk_size
     )
-    data_group.create_dataset(
-        'target', 
-        data=concatenated_targets, 
-        chunks=target_chunk_size
-    )
-    meta_group.create_dataset(
-        'episode_ends', 
-        data=episode_ends
-    )
+    meta_group.create_dataset("episode_ends", data=episode_ends)
+
 
 def _get_start_idx(pusher_desired):
     """
@@ -588,24 +562,33 @@ def _get_start_idx(pusher_desired):
     length = len(pusher_desired.t)
     first_non_zero_idx = 0
     for i in range(length):
-        if pusher_desired.x[i] != 0 or pusher_desired.y[i] != 0 or pusher_desired.theta[i] != 0:
+        if (
+            pusher_desired.x[i] != 0
+            or pusher_desired.y[i] != 0
+            or pusher_desired.theta[i] != 0
+        ):
             first_non_zero_idx = i
             break
-    
-    initial_state = np.array([
-        pusher_desired.x[first_non_zero_idx], 
-        pusher_desired.y[first_non_zero_idx], 
-        pusher_desired.theta[first_non_zero_idx]
-    ])
+
+    initial_state = np.array(
+        [
+            pusher_desired.x[first_non_zero_idx],
+            pusher_desired.y[first_non_zero_idx],
+            pusher_desired.theta[first_non_zero_idx],
+        ]
+    )
     assert not np.allclose(initial_state, np.array([0.0, 0.0, 0.0]))
 
-    for i in range(first_non_zero_idx+1, length):
-        state = np.array([pusher_desired.x[i], pusher_desired.y[i], pusher_desired.theta[i]])
+    for i in range(first_non_zero_idx + 1, length):
+        state = np.array(
+            [pusher_desired.x[i], pusher_desired.y[i], pusher_desired.theta[i]]
+        )
         if not np.allclose(state, initial_state):
             return i
-    
+
     return None
-    
+
+
 def _get_closest_index(arr, t, start_idx=None, end_idx=None):
     """Returns index of arr that is closest to t."""
 
@@ -613,8 +596,8 @@ def _get_closest_index(arr, t, start_idx=None, end_idx=None):
         start_idx = 0
     if end_idx is None:
         end_idx = len(arr)
-    
-    min_diff = float('inf')
+
+    min_diff = float("inf")
     min_idx = -1
     eps = 1e-4
     for i in range(start_idx, end_idx):
@@ -626,6 +609,7 @@ def _get_closest_index(arr, t, start_idx=None, end_idx=None):
         if diff < min_diff:
             min_diff = diff
             min_idx = i
+
 
 def _get_plan_start_and_goals_to_point(
     seed: int,
@@ -659,8 +643,8 @@ def _get_plan_start_and_goals_to_point(
         )
 
         if noise_final_pose:
-            tran_tol = 0.01 # 0.01cm
-            rot_tol = 1 * np.pi / 180 # 1 degrees
+            tran_tol = 0.01  # 0.01cm
+            rot_tol = 1 * np.pi / 180  # 1 degrees
             slider_target_pose = PlanarPose(
                 point[0] + np.random.uniform(-tran_tol, tran_tol),
                 point[1] + np.random.uniform(-tran_tol, tran_tol),
@@ -677,28 +661,40 @@ def _get_plan_start_and_goals_to_point(
 
     return plans
 
+
 def _print_data_collection_config_info(data_collection_config: DataCollectionConfig):
     """Output diagnostic info about the data collection configuration."""
 
     print("This data collection script is configured to perform the following steps.\n")
     step_num = 1
     if data_collection_config.generate_plans:
-        print(f"{step_num}. Generate new plans in '{data_collection_config.plans_dir}' "
-              f"according to the following config:")        
+        print(
+            f"{step_num}. Generate new plans in '{data_collection_config.plans_dir}' "
+            f"according to the following config:"
+        )
         print(data_collection_config.plan_config, end="\n\n")
         step_num += 1
     if data_collection_config.render_plans:
-        print(f"{step_num}. Render the plans in '{data_collection_config.plans_dir}' "
-              f"to '{data_collection_config.rendered_plans_dir}'\n")
+        print(
+            f"{step_num}. Render the plans in '{data_collection_config.plans_dir}' "
+            f"to '{data_collection_config.rendered_plans_dir}'\n"
+        )
         step_num += 1
     if data_collection_config.convert_to_zarr:
-        print(f"{step_num}. Convert the rendered plans in '{data_collection_config.rendered_plans_dir}' "
-              f"to zarr format in '{data_collection_config.zarr_path}'")
+        print(
+            f"{step_num}. Convert the rendered plans in '{data_collection_config.rendered_plans_dir}' "
+            f"to zarr format in '{data_collection_config.zarr_path}'"
+        )
         if data_collection_config.convert_to_zarr_reduce:
-            print("Converting to zarr in 'reduce' mode (i.e. performing the reduce step of map-reduce)")
-            print("The 'convert_to_zarr_reduce = True' flag is usually only set for Supercloud runs.")
+            print(
+                "Converting to zarr in 'reduce' mode (i.e. performing the reduce step of map-reduce)"
+            )
+            print(
+                "The 'convert_to_zarr_reduce = True' flag is usually only set for Supercloud runs."
+            )
         print()
         step_num += 1
+
 
 def _print_sim_config_info(sim_config: PlanarPushingSimConfig):
     """Output diagnostic info about the simulation configuration."""
@@ -707,17 +703,43 @@ def _print_sim_config_info(sim_config: PlanarPushingSimConfig):
     print(f"Target slider pose: {sim_config.slider_goal_pose}")
     print()
 
+
 def _create_directory(dir_path):
     """Helper function for creating directories."""
 
     if os.path.exists(dir_path):
-        user_input = input(f"{dir_path} already exists. Delete existing directory? (y/n)\n")
+        user_input = input(
+            f"{dir_path} already exists. Delete existing directory? (y/n)\n"
+        )
         if user_input.lower() != "y":
             print("Exiting")
             exit()
         shutil.rmtree(dir_path)
     else:
         os.makedirs(dir_path)
+
+
+def create_arbitrary_shape_sdf_file(cfg: OmegaConf, sim_config: PlanarPushingSimConfig):
+    sdf_path = get_slider_sdf_path(sim_config, models_folder)
+    if os.path.exists(sdf_path):
+        os.remove(sdf_path)
+
+    translation = -np.concatenate(
+        [sim_config.slider.geometry.com_offset.flatten(), [0]]
+    )
+
+    primitive_info = load_primitive_info(cfg.arbitrary_shape_pickle_path)
+    create_processed_mesh_primitive_sdf_file(
+        primitive_info=primitive_info,
+        physical_properties=hydra.utils.instantiate(cfg.physical_properties),
+        global_translation=translation,
+        output_file_path=sdf_path,
+        model_name="arbitrary",
+        base_link_name="arbitrary",
+        is_hydroelastic="hydroelastic" in cfg.contact_model.lower(),
+        rgba=[0.0, 0.0, 0.0, 1.0],
+    )
+
 
 if __name__ == "__main__":
     main()

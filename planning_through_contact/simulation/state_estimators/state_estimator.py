@@ -1,43 +1,41 @@
 from typing import List, Optional
+
 import numpy as np
 from manipulation.scenarios import AddMultibodyTriad
+from pydrake.all import Box as DrakeBox
+from pydrake.all import Context
+from pydrake.all import Cylinder as DrakeCylinder
 from pydrake.all import (
-    Context,
     Diagram,
     DiagramBuilder,
-    MultibodyPlant,
-    MultibodyPositionToGeometryPose,
-    SceneGraph,
-    StartMeshcat,
-    MeshcatVisualizer,
-    ModelInstanceIndex,
-    GeometryInstance,
-    RigidBody as DrakeRigidBody,
-    Box as DrakeBox,
-    Cylinder as DrakeCylinder,
     GeometryInstance,
     MakePhongIllustrationProperties,
-    Rgba,
-    RigidTransform,
-    RollPitchYaw,
     Meshcat,
+    MeshcatVisualizer,
+    ModelInstanceIndex,
+    MultibodyPlant,
+    MultibodyPositionToGeometryPose,
+    Rgba,
 )
+from pydrake.all import RigidBody as DrakeRigidBody
+from pydrake.all import RigidTransform, RollPitchYaw, SceneGraph, StartMeshcat
+
 from planning_through_contact.geometry.planar.planar_pose import PlanarPose
-from planning_through_contact.simulation.systems.pusher_slider_pose_selector import (
-    PusherSliderPoseSelector,
-)
 from planning_through_contact.simulation.planar_pushing.planar_pushing_sim_config import (
     PlanarPushingSimConfig,
 )
 from planning_through_contact.simulation.sim_utils import (
-    AddSliderAndConfigureContact,
     AddRandomizedSliderAndConfigureContact,
+    AddSliderAndConfigureContact,
     randomize_camera_config,
     randomize_pusher,
     randomize_table,
 )
 from planning_through_contact.simulation.state_estimators.plant_updater import (
     PlantUpdater,
+)
+from planning_through_contact.simulation.systems.pusher_slider_pose_selector import (
+    PusherSliderPoseSelector,
 )
 from planning_through_contact.visualize.colors import COLORS
 
@@ -76,7 +74,7 @@ class StateEstimator(Diagram):
             table_grey = np.random.uniform(0.3, 0.95)
             pusher_grey = np.random.uniform(0.1, table_grey)
             color_range = 0.025
-            
+
             randomize_pusher()
             randomize_table(
                 default_color=[table_grey, table_grey, table_grey],
@@ -85,16 +83,15 @@ class StateEstimator(Diagram):
             self.slider = AddRandomizedSliderAndConfigureContact(
                 default_color=[pusher_grey, pusher_grey, pusher_grey],
                 color_range=color_range,
-                sim_config=sim_config, 
-                plant=self._plant, 
-                scene_graph=self._scene_graph
+                sim_config=sim_config,
+                plant=self._plant,
+                scene_graph=self._scene_graph,
             )
 
         # Add camera
         if sim_config.camera_configs is not None:
-            from pydrake.systems.sensors import (
-                ApplyCameraConfig
-            )
+            from pydrake.systems.sensors import ApplyCameraConfig
+
             for camera_config in sim_config.camera_configs:
                 if sim_config.domain_randomization:
                     camera_config = randomize_camera_config(camera_config)
@@ -190,20 +187,32 @@ class StateEstimator(Diagram):
 
             # Set up meshcat camera view
             zoom = 1.8
-            camera_in_world = [sim_config.slider_goal_pose.x, 
-                            (sim_config.slider_goal_pose.y-1)/zoom,
-                            1.5/zoom]
-            target_in_world = [sim_config.slider_goal_pose.x, sim_config.slider_goal_pose.x, 0]
+            camera_in_world = [
+                sim_config.slider_goal_pose.x,
+                (sim_config.slider_goal_pose.y - 1) / zoom,
+                1.5 / zoom,
+            ]
+            target_in_world = [
+                sim_config.slider_goal_pose.x,
+                sim_config.slider_goal_pose.x,
+                0,
+            ]
             self.meshcat.SetCameraPose(camera_in_world, target_in_world)
 
         visualizer = MeshcatVisualizer.AddToBuilder(
             builder, self._scene_graph.get_query_output_port(), self.meshcat
         )
         zoom = 1.8
-        camera_in_world = [sim_config.slider_goal_pose.x, 
-                           (sim_config.slider_goal_pose.y-1)/zoom,
-                           1.5/zoom]
-        target_in_world = [sim_config.slider_goal_pose.x, sim_config.slider_goal_pose.x, 0]
+        camera_in_world = [
+            sim_config.slider_goal_pose.x,
+            (sim_config.slider_goal_pose.y - 1) / zoom,
+            1.5 / zoom,
+        ]
+        target_in_world = [
+            sim_config.slider_goal_pose.x,
+            sim_config.slider_goal_pose.x,
+            0,
+        ]
         self.meshcat.SetCameraPose(camera_in_world, target_in_world)
         if sim_config.visualize_desired:
             assert sim_config.slider_goal_pose is not None
