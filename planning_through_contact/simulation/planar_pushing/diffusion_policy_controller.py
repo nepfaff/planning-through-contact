@@ -4,6 +4,7 @@ import time as pytime
 from collections import deque
 from typing import List, Optional, Tuple
 
+import cv2
 import dill
 import hydra
 import matplotlib.pyplot as plt
@@ -234,4 +235,10 @@ class DiffusionPolicyController(LeafSystem):
         image = self.camera_port.Eval(context)
         pusher_planer_pose = PlanarPose.from_pose(pusher_pose).vector()
         self._pusher_pose_deque.append(pusher_planer_pose)
-        self._image_deque.append(image.data[:, :, :-1])
+        if image.shape[0] != self._image_height or image.shape[1] != self._image_width:
+            image = cv2.resize(
+                image.data[:, :, :-1], (self._image_height, self._image_width)
+            )
+            self._image_deque.append(image)
+        else:
+            self._image_deque.append(image.data[:, :, :-1])
