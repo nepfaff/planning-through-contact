@@ -1,23 +1,18 @@
 import logging
 import os
-from typing import Optional
 import pathlib
 from enum import Enum
+from typing import Optional
 
 import numpy as np
-from pydrake.all import (
-    DiagramBuilder,
-    LogVectorOutput,
-    Meshcat,
-    Simulator,
-    Rgba
-)
+from pydrake.all import DiagramBuilder, LogVectorOutput, Meshcat, Rgba, Simulator
 
+from planning_through_contact.experiments.utils import get_default_plan_config
+from planning_through_contact.geometry.planar.planar_pose import PlanarPose
 from planning_through_contact.planning.planar.planar_plan_config import (
     BoxWorkspace,
     PlanarPushingWorkspace,
 )
-from planning_through_contact.geometry.planar.planar_pose import PlanarPose
 from planning_through_contact.simulation.controllers.desired_planar_position_source_base import (
     DesiredPlanarPositionSourceBase,
 )
@@ -30,22 +25,18 @@ from planning_through_contact.simulation.controllers.teleop_position_source impo
 from planning_through_contact.simulation.planar_pushing.planar_pushing_sim_config import (
     PlanarPushingSimConfig,
 )
-
+from planning_through_contact.simulation.sim_utils import (
+    check_collision,
+    create_goal_geometries,
+    get_slider_pose_within_workspace,
+    slider_within_workspace,
+    visualize_desired_slider_pose,
+)
 from planning_through_contact.simulation.systems.rigid_transform_to_planar_pose_vector_system import (
     RigidTransformToPlanarPoseVectorSystem,
 )
 from planning_through_contact.simulation.systems.robot_state_to_rigid_transform import (
     RobotStateToRigidTransform,
-)
-from planning_through_contact.experiments.utils import (
-    get_default_plan_config,
-)
-from planning_through_contact.simulation.sim_utils import (
-    check_collision,
-    slider_within_workspace,
-    get_slider_pose_within_workspace,
-    create_goal_geometries,
-    visualize_desired_slider_pose,
 )
 
 logger = logging.getLogger(__name__)
@@ -91,7 +82,7 @@ class OutputFeedbackTableEnvironment:
                     ),
                 )
             self._plan_config = get_default_plan_config(
-                slider_type='box' if sim_config.slider.name == 'box' else 'tee',
+                slider_type=sim_config.slider.name,
                 pusher_radius=0.015,
                 hardware=False,
             )            
