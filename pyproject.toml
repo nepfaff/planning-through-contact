@@ -37,6 +37,7 @@ lxml = "^5.2.1"
 manipulation = "2024.1.01"
 pyvirtualdisplay = "^3.0"
 scipy = "^1.13.0"
+wandb = "^0.17.0"
 
 [tool.poetry.dev-dependencies]
 
